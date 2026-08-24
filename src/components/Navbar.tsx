@@ -1,5 +1,5 @@
-import React from 'react';
-import { Volume2, VolumeX, Music, HardDrive } from 'lucide-react';
+import React, { useState } from 'react';
+import { Volume2, VolumeX, Music, HardDrive, Sparkles, Crown } from 'lucide-react';
 import { PlayerStats } from '../types';
 import { PixelIcon, PixelIconName } from './PixelIcon';
 import { sound } from '../utils/sound';
@@ -7,13 +7,22 @@ import { sound } from '../utils/sound';
 interface NavbarProps {
   stats: PlayerStats;
   onOpenSaveModal: () => void;
+  onOpenCheatModal?: () => void;
+  onVersionClick?: () => void;
   activeTab: string;
   setActiveTab: (tab: string) => void;
 }
 
-export const Navbar: React.FC<NavbarProps> = ({ stats, onOpenSaveModal, activeTab, setActiveTab }) => {
-  const [sfxOn, setSfxOn] = React.useState(stats.soundEnabled);
-  const [bgmOn, setBgmOn] = React.useState(stats.musicEnabled);
+export const Navbar: React.FC<NavbarProps> = ({ 
+  stats, 
+  onOpenSaveModal, 
+  onOpenCheatModal,
+  onVersionClick,
+  activeTab, 
+  setActiveTab 
+}) => {
+  const [sfxOn, setSfxOn] = useState(stats.soundEnabled);
+  const [bgmOn, setBgmOn] = useState(stats.musicEnabled);
 
   const toggleSfx = () => {
     const next = !sfxOn;
@@ -30,8 +39,10 @@ export const Navbar: React.FC<NavbarProps> = ({ stats, onOpenSaveModal, activeTa
     stats.musicEnabled = next;
   };
 
-  // Format large numbers nicely (e.g. 1.2M, 5.4B)
+  // Format large numbers nicely (e.g. 1.2M, 5.4B, 10Qa)
   const formatNum = (num: number) => {
+    if (num >= 1e18) return (num / 1e18).toFixed(2) + 'Qi';
+    if (num >= 1e15) return (num / 1e15).toFixed(2) + 'Qa';
     if (num >= 1e12) return (num / 1e12).toFixed(2) + 'T';
     if (num >= 1e9) return (num / 1e9).toFixed(2) + 'B';
     if (num >= 1e6) return (num / 1e6).toFixed(2) + 'M';
@@ -39,9 +50,15 @@ export const Navbar: React.FC<NavbarProps> = ({ stats, onOpenSaveModal, activeTa
     return num.toLocaleString();
   };
 
-  const tabs: { id: string; label: string; icon: PixelIconName }[] = [
+  const isCheatActive = Boolean(stats.adminUnlocked || stats.cheatUnlocked);
+
+  const tabs: { id: string; label: string; icon: PixelIconName; highlight?: boolean }[] = [
     { id: 'anvil', label: '모루 강화', icon: 'anvil' },
     { id: 'dungeon', label: '던전 사냥', icon: 'dungeon' },
+    { id: 'prestige', label: `환생·차원 (${stats.rebirthCount}R/${stats.superRebirthCount}SR)`, icon: 'gold', highlight: stats.gold >= 100000 || stats.rebirthCount >= 100 },
+    ...(stats.superRebirthCount >= 10 || stats.adminUnlocked
+      ? [{ id: 'tier_staircase', label: '👑 티어 계단 (T1~T5)', icon: 'trophy' as PixelIconName, highlight: true }]
+      : []),
     { id: 'runes', label: '속성·룬', icon: 'rune' },
     { id: 'blacksmith', label: '대장간 연구', icon: 'blacksmith' },
     { id: 'codex', label: '도감 컬렉션', icon: 'codex' },
@@ -57,10 +74,19 @@ export const Navbar: React.FC<NavbarProps> = ({ stats, onOpenSaveModal, activeTa
         <div className="flex items-center gap-2">
           <PixelIcon name="sword" size={24} className="animate-pulse" />
           <div className="flex flex-col">
-            <h1 className="font-bold text-amber-400 tracking-wider text-sm sm:text-base drop-shadow-[0_2px_4px_rgba(0,0,0,0.8)]">
-              픽셀 검 강화하기
+            <h1 className="font-bold text-amber-400 tracking-wider text-sm sm:text-base drop-shadow-[0_2px_4px_rgba(0,0,0,0.8)] flex items-center gap-1.5">
+              <span>픽셀 검 강화하기</span>
+              <span className="text-[10px] bg-amber-950 text-amber-300 px-1.5 py-0.5 rounded border border-amber-700 font-mono">
+                W{stats.currentWorldId || 1}
+              </span>
             </h1>
-            <span className="text-[10px] text-neutral-400 font-mono">Pixel Sword Master v1.2</span>
+            <button
+              onClick={onVersionClick}
+              className="text-[10px] text-neutral-400 hover:text-amber-400 font-mono text-left cursor-pointer transition-colors select-none"
+              title="클릭하여 버전 정보 확인 (3회 클릭 시 어드민 인증)"
+            >
+              Pixel Sword Master v1.3.0 {stats.adminUnlocked && <span className="text-rose-400 font-bold ml-1">[ADMIN]</span>}
+            </button>
           </div>
         </div>
 
@@ -107,8 +133,26 @@ export const Navbar: React.FC<NavbarProps> = ({ stats, onOpenSaveModal, activeTa
           </div>
         </div>
 
-        {/* Settings & Save Controls */}
+        {/* Settings & Save & Cheat Controls */}
         <div className="flex items-center gap-1.5">
+          {isCheatActive && onOpenCheatModal && (
+            <button
+              onClick={() => {
+                sound.playSuccess();
+                onOpenCheatModal();
+              }}
+              title="어드민 치트 메뉴 열기"
+              className={`flex items-center gap-1 px-2.5 py-1 text-neutral-950 font-bold border-2 rounded font-mono text-xs cursor-pointer shadow-lg animate-pulse transition-all ${
+                stats.adminUnlocked
+                  ? 'bg-gradient-to-r from-rose-500 via-amber-400 to-rose-500 border-amber-300 hover:brightness-110'
+                  : 'bg-gradient-to-r from-amber-600 to-rose-600 hover:from-amber-500 hover:to-rose-500 border-amber-300'
+              }`}
+            >
+              <Crown className="w-3.5 h-3.5" />
+              <span>{stats.adminUnlocked ? '어드민 치트' : '치트'}</span>
+            </button>
+          )}
+
           <button
             onClick={toggleSfx}
             title={sfxOn ? '효과음 끄기' : '효과음 켜기'}
@@ -157,6 +201,8 @@ export const Navbar: React.FC<NavbarProps> = ({ stats, onOpenSaveModal, activeTa
               className={`px-3 py-1.5 rounded-t text-xs sm:text-sm font-bold flex items-center gap-1.5 whitespace-nowrap transition-all border-b-2 cursor-pointer ${
                 isActive
                   ? 'bg-neutral-950 text-amber-400 border-amber-400 shadow-md transform -translate-y-0.5'
+                  : tab.highlight
+                  ? 'bg-neutral-900 text-amber-300 hover:text-amber-200 hover:bg-neutral-800/80 border-amber-600/40 animate-pulse'
                   : 'bg-neutral-900 text-neutral-400 hover:text-neutral-200 hover:bg-neutral-800/80 border-transparent'
               }`}
             >

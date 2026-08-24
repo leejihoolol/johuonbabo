@@ -27,7 +27,7 @@ export function drawPixelMonster(
 
   // 1. SLIME
   if (monster.spriteType === 'slime') {
-    const squish = Math.sin(frame * 0.1) * 2;
+    const squish = Math.sin(frame * 0.03) * 1.5;
     const bodyW = 6 + (monster.isBoss ? 2 : 0);
     const bodyH = 5 + (monster.isBoss ? 2 : 0);
 
@@ -62,7 +62,7 @@ export function drawPixelMonster(
 
   // 2. GOBLIN / ORC
   else if (monster.spriteType === 'goblin' || monster.spriteType === 'orc') {
-    const bob = Math.sin(frame * 0.08) * 1.5;
+    const bob = Math.sin(frame * 0.03) * 1.2;
     const isOrc = monster.spriteType === 'orc';
     const skin = c;
     const armor = isOrc ? '#7f1d1d' : '#854d0e';
@@ -101,7 +101,7 @@ export function drawPixelMonster(
 
   // 3. SKELETON
   else if (monster.spriteType === 'skeleton') {
-    const float = Math.sin(frame * 0.07) * 2;
+    const float = Math.sin(frame * 0.03) * 1.5;
     // Skull
     for (let y = -10; y <= -5; y++) {
       for (let x = -4; x <= 4; x++) {
@@ -127,7 +127,7 @@ export function drawPixelMonster(
 
   // 4. GOLEM
   else if (monster.spriteType === 'golem') {
-    const breath = Math.sin(frame * 0.05) * 1.5;
+    const breath = Math.sin(frame * 0.02) * 1.0;
     // Massive Rocky Head & Shoulders
     for (let y = -11; y <= -5; y++) {
       for (let x = -5; x <= 5; x++) {
@@ -153,8 +153,8 @@ export function drawPixelMonster(
 
   // 5. DRAGON / WYRM / DEMON / VOID GOD
   else {
-    const float = Math.sin(frame * 0.08) * 3;
-    const wingFlap = Math.sin(frame * 0.15) * 3;
+    const float = Math.sin(frame * 0.03) * 1.8;
+    const wingFlap = Math.sin(frame * 0.05) * 1.5;
 
     // Wings
     for (let wy = -10; wy <= 2; wy++) {
@@ -185,7 +185,7 @@ export function drawPixelMonster(
 
     // Dark / Holy Aura Particles for Mythic bosses
     for (let p = 0; p < 8; p++) {
-      const pAngle = frame * 0.04 + (p * Math.PI) / 4;
+      const pAngle = frame * 0.03 + (p * Math.PI) / 4;
       const px = Math.cos(pAngle) * 20;
       const py = Math.sin(pAngle) * 12;
       drawPx(Math.floor(px), Math.floor(py + float), '#e11d48');

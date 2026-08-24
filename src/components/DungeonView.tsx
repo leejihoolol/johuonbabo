@@ -8,6 +8,7 @@ import { DUNGEON_STAGES, PLAYER_SKILLS } from '../data/dungeons';
 import { drawPixelMonster } from '../utils/pixelMonsterRenderer';
 import { sound } from '../utils/sound';
 import { PixelIcon } from './PixelIcon';
+import { calculateTotalMultipliers } from '../utils/worldSwordHelper';
 
 interface DungeonViewProps {
   stats: PlayerStats;
@@ -43,9 +44,14 @@ export const DungeonView: React.FC<DungeonViewProps> = ({
   const [damageList, setDamageList] = useState<DamageNumber[]>([]);
   const [skills, setSkills] = useState<Skill[]>(PLAYER_SKILLS);
   const [heroAttackAnim, setHeroAttackAnim] = useState(false);
-  const [frame, setFrame] = useState(0);
 
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
+  const frameRef = useRef(0);
+  const isHitRef = useRef(false);
+
+  useEffect(() => {
+    isHitRef.current = isHit;
+  }, [isHit]);
 
   // Initialize or reset monster on stage or monster index change
   useEffect(() => {
@@ -62,35 +68,23 @@ export const DungeonView: React.FC<DungeonViewProps> = ({
     }
   }, [selectedStageId, monsterIndex]);
 
-  // Monster Canvas Animation Frame
+  // Monster Canvas Animation Frame (smooth RAF loop without triggering React component re-renders)
   useEffect(() => {
     let animId: number;
     const render = () => {
-      setFrame((f) => f + 1);
+      frameRef.current += 1;
       const canvas = canvasRef.current;
       if (canvas && currentMonster) {
         const ctx = canvas.getContext('2d');
         if (ctx) {
-          drawPixelMonster(ctx, currentMonster, canvas.width, canvas.height, frame, isHit);
+          drawPixelMonster(ctx, currentMonster, canvas.width, canvas.height, frameRef.current, isHitRef.current);
         }
       }
       animId = requestAnimationFrame(render);
     };
     render();
     return () => cancelAnimationFrame(animId);
-  }, [currentMonster, frame, isHit]);
-
-  // Skill Cooldown Ticker
-  useEffect(() => {
-    const timer = setInterval(() => {
-      setSkills((prev) =>
-        prev.map((sk) => ({
-          ...sk,
-        }))
-      );
-    }, 100);
-    return () => clearInterval(timer);
-  }, []);
+  }, [currentMonster]);
 
   // Player Attack Logic
   const performAttack = (damageMultiplier = 1.0, skillElement: ElementType = 'none', isSkill = false) => {
@@ -99,17 +93,19 @@ export const DungeonView: React.FC<DungeonViewProps> = ({
     setHeroAttackAnim(true);
     setTimeout(() => setHeroAttackAnim(false), 120);
 
+    const multipliers = calculateTotalMultipliers(stats);
+
     // Calculate Damage
-    const baseAtk = currentSword.atk;
+    const baseAtk = currentSword.atk * multipliers.totalAtkMult;
     
-    // Rune / Research crit bonus
-    const critBonus = (researches['res_crit_boost'] || 0) * 1.5;
+    // Rune / Research / Rebirth crit bonus
+    const critBonus = (researches['res_crit_boost'] || 0) * 1.5 + (multipliers.rpCritBonus || 0);
     const totalCritRate = currentSword.critRate + critBonus;
     const isCrit = Math.random() * 100 < totalCritRate;
     
     let dmg = baseAtk * damageMultiplier;
     if (isCrit) {
-      dmg *= (currentSword.critDmg / 100);
+      dmg *= ((currentSword.critDmg + (multipliers.rpCritDmgBonus || 0)) / 100);
     }
 
     // Element bonus: +50% if matching monster weakness

@@ -114,6 +114,44 @@ export interface GameLog {
   timestamp: string;
 }
 
+export interface StoredSword {
+  id: string;
+  worldId: number;
+  name: string;
+  level: number;
+  rarity: Rarity;
+  atkBonus: number;
+  goldBonus: number;
+  colorTheme: Sword['colorTheme'];
+  description: string;
+  storedAt: number;
+}
+
+export interface WorldInfo {
+  id: number;
+  name: string;
+  subTitle: string;
+  theme: string;
+  color: string;
+  bgGradient: string;
+  requiredSuperRebirth: number;
+  swordPrefix: string;
+  baseMultiplier: number;
+  description: string;
+}
+
+export interface TierStaircase {
+  tier: number;
+  name: string;
+  requiredGold: number;
+  requiredWorldId: number;
+  requiredSwordLevel: number;
+  unlocked: boolean;
+  rewardDescription: string;
+  multiplierWorld: number;
+  multiplierValue: number;
+}
+
 export interface PlayerStats {
   gold: number;
   diamonds: number;
@@ -150,6 +188,36 @@ export interface PlayerStats {
   autoEnhanceActive: boolean;
   useSafetyScrollAuto: boolean;
   useLuckyPotionAuto: boolean;
+  
+  // Rebirth & Prestige System
+  rebirthCount: number;
+  superRebirthCount: number;
+  rebirthPoints: number;
+  rebirthStats: Record<string, number>;
+  
+  // Multi-World System
+  currentWorldId: number;
+  worldProgress: Record<number, {
+    currentSwordLevel: number;
+    maxSwordLevelReached: number;
+    highestStageCleared: number;
+  }>;
+  
+  // Sword Vault (Unlocked after 10 Rebirths)
+  swordVault: StoredSword[];
+  
+  // Tier Staircase (Unlocked after 10 Super Rebirths)
+  unlockedTiers: number[];
+  
+  // The End & Cheat Mode & Admin Console
+  theEndCompleted?: boolean;
+  cheatUnlocked?: boolean;
+  adminUnlocked?: boolean;
+  unlockedCheatMode?: boolean;
+  cheatSuccessRate100?: boolean;
+  cheatDmg1000x?: boolean;
+  cheatDmg1M?: boolean;
+  cheatInstantAuto?: boolean;
   
   soundEnabled: boolean;
   musicEnabled: boolean;

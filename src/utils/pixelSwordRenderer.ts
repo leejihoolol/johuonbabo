@@ -56,8 +56,8 @@ export function drawPixelSword(
 
   // Tilt sword diagonally (45 degrees) like classic RPGs
   ctx.translate(cx, cy);
-  const floatOffset = Math.sin(frame * 0.05) * 4;
-  const shakeOffset = isEnhancing ? (Math.random() * 6 - 3) : 0;
+  const floatOffset = Math.sin(frame * 0.03) * 2;
+  const shakeOffset = isEnhancing ? (Math.random() * 4 - 2) : 0;
   ctx.translate(shakeOffset, floatOffset + shakeOffset);
   ctx.rotate((-45 * Math.PI) / 180);
 

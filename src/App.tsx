@@ -2,19 +2,26 @@ import React, { useState, useEffect, useRef } from 'react';
 import { Navbar } from './components/Navbar';
 import { AnvilView } from './components/AnvilView';
 import { DungeonView } from './components/DungeonView';
+import { PrestigeView } from './components/PrestigeView';
+import { TierStaircaseView } from './components/TierStaircaseView';
 import { RunesAndElementsView } from './components/RunesAndElementsView';
 import { BlacksmithView } from './components/BlacksmithView';
 import { CodexView } from './components/CodexView';
 import { ShopView } from './components/ShopView';
 import { AchievementsView } from './components/AchievementsView';
 import { SaveModal } from './components/SaveModal';
+import { CheatModal } from './components/CheatModal';
+import { AdminPasswordModal } from './components/AdminPasswordModal';
+import { EndingCinematicModal } from './components/EndingCinematicModal';
 
-import { Achievement, ElementType, GameLog, Monster, PlayerStats, Rune, Sword } from './types';
+import { Achievement, ElementType, GameLog, Monster, PlayerStats, Rune, StoredSword, Sword } from './types';
 import { SWORDS_DATA } from './data/swords';
+import { WORLDS_DATA, TIER_STAIRCASES_DATA } from './data/worlds';
 import { INITIAL_ACHIEVEMENTS, INITIAL_RUNES } from './data/research';
 import { sound } from './utils/sound';
+import { getWorldSword, calculateTotalMultipliers } from './utils/worldSwordHelper';
 
-const STORAGE_KEY = 'PIXEL_SWORD_MASTER_SAVE_V1';
+const STORAGE_KEY = 'PIXEL_SWORD_MASTER_SAVE_V2';
 
 const DEFAULT_STATS: PlayerStats = {
   gold: 500,
@@ -71,6 +78,33 @@ const DEFAULT_STATS: PlayerStats = {
   musicEnabled: false,
   screenShake: true,
   damageNumbers: true,
+
+  // Prestige & World Stats
+  rebirthCount: 0,
+  rebirthPoints: 0,
+  rebirthStats: {
+    atk_mult: 0,
+    gold_mult: 0,
+    enhance_rate: 0,
+    stone_drop: 0,
+    crit_rate: 0,
+    crit_dmg: 0,
+  },
+
+  superRebirthCount: 0,
+  currentWorldId: 1,
+  worldProgress: {
+    1: { currentSwordLevel: 0, maxSwordLevelReached: 0, highestStageCleared: 0 },
+  },
+  swordVault: [],
+  unlockedTiers: [],
+
+  // Cheat Mode & Admin
+  cheatUnlocked: false,
+  adminUnlocked: false,
+  unlockedCheatMode: false,
+  cheatSuccessRate100: false,
+  cheatDmg1000x: false,
 };
 
 export default function App() {
@@ -90,7 +124,49 @@ export default function App() {
 
   const [activeTab, setActiveTab] = useState<string>('anvil');
   const [isSaveModalOpen, setIsSaveModalOpen] = useState(false);
+  const [isCheatModalOpen, setIsCheatModalOpen] = useState(false);
+  const [isAdminPasswordModalOpen, setIsAdminPasswordModalOpen] = useState(false);
+  const [isEndingActive, setIsEndingActive] = useState(false);
   const [isAutoEnhancing, setIsAutoEnhancing] = useState(false);
+
+  // Version 3-click trigger state
+  const [versionClicks, setVersionClicks] = useState(0);
+  const clickTimeoutRef = useRef<number | null>(null);
+
+  const handleVersionClick = () => {
+    sound.playClick();
+    const nextCount = versionClicks + 1;
+    if (clickTimeoutRef.current) {
+      clearTimeout(clickTimeoutRef.current);
+    }
+
+    if (nextCount >= 3) {
+      setVersionClicks(0);
+      sound.playLevelUp();
+      setIsAdminPasswordModalOpen(true);
+    } else {
+      setVersionClicks(nextCount);
+      clickTimeoutRef.current = window.setTimeout(() => {
+        setVersionClicks(0);
+      }, 2500);
+    }
+  };
+
+  const handleAdminSuccess = () => {
+    setIsAdminPasswordModalOpen(false);
+    setStats((prev) => {
+      const updated = {
+        ...prev,
+        adminUnlocked: true,
+        cheatUnlocked: true,
+        unlockedCheatMode: true,
+      };
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(updated));
+      return updated;
+    });
+    setIsCheatModalOpen(true);
+    addLog('[어드민] 보안 인증 성공! 최고 관리자 치트 콘솔이 영구 개방되었습니다.', 'boss');
+  };
   const [logs, setLogs] = useState<GameLog[]>([
     {
       id: 'init_log',
@@ -100,9 +176,11 @@ export default function App() {
     },
   ]);
 
-  // Current and Next Sword Data
-  const currentSword: Sword = SWORDS_DATA[stats.currentSwordLevel] || SWORDS_DATA[0];
-  const nextSword: Sword | null = SWORDS_DATA[stats.currentSwordLevel + 1] || null;
+  // Current and Next Sword Data for Current World
+  const currentWorldId = stats.currentWorldId || 1;
+  const currentSword: Sword = getWorldSword(currentWorldId, stats.currentSwordLevel || 0);
+  const nextSword: Sword | null =
+    (stats.currentSwordLevel || 0) < 35 ? getWorldSword(currentWorldId, (stats.currentSwordLevel || 0) + 1) : null;
 
   // Add Log Helper
   const addLog = (text: string, type: GameLog['type']) => {
@@ -133,19 +211,19 @@ export default function App() {
     if (autoMineLevel <= 0) return;
 
     const mineInterval = setInterval(() => {
-      setStats((prev) => {
-        const amount = autoMineLevel * 1;
-        return {
-          ...prev,
-          enhancementStones: prev.enhancementStones + amount,
-        };
-      });
+      const multipliers = calculateTotalMultipliers(stats);
+      const stoneBonus = multipliers.rpStoneBonus || 1;
+      const amount = Math.floor(autoMineLevel * 1 * stoneBonus);
+      setStats((prev) => ({
+        ...prev,
+        enhancementStones: prev.enhancementStones + amount,
+      }));
     }, 10000);
 
     return () => clearInterval(mineInterval);
-  }, [stats.researches]);
+  }, [stats.researches, stats.rebirthStats]);
 
-  // Core Enhance Logic
+  // Core Enhance Logic with Guaranteed Safety Scroll Consumption & Protection
   const handleEnhance = (useQteBonus = false): { success: boolean; resultType: 'success' | 'fail' | 'destroy' | 'drop' } => {
     if (currentSword.level >= 35) {
       setIsAutoEnhancing(false);
@@ -153,7 +231,7 @@ export default function App() {
     }
 
     if (stats.gold < currentSword.costGold || stats.enhancementStones < currentSword.costStones) {
-      addLog(`재화 부족: ${currentSword.costGold}G / ${currentSword.costStones}개 강화석 필요`, 'fail');
+      addLog(`재화 부족: ${currentSword.costGold.toLocaleString()}G / ${currentSword.costStones}개 강화석 필요`, 'fail');
       setIsAutoEnhancing(false);
       return { success: false, resultType: 'fail' };
     }
@@ -168,7 +246,9 @@ export default function App() {
     // Calculate bonuses
     const researchSuccessBonus = (stats.researches['res_success'] || 0) * 0.5;
     const researchDestroyReduce = (stats.researches['res_destroy_reduce'] || 0) * 1.0;
-    
+    const multipliers = calculateTotalMultipliers(stats);
+    const rebirthSuccessBonus = multipliers.rpSuccessBonus || 0;
+
     // Rune luck bonus
     let runeLuckBonus = 0;
     stats.equippedRunes.forEach((r) => {
@@ -187,10 +267,32 @@ export default function App() {
     if (stats.useLuckyPotionAuto && newPotions > 0) {
       potionBonus = 10;
       newPotions -= 1;
+      addLog(`[행운의 영약] 강화 성공 확률 +10% 적용 (남은 비약: ${newPotions}개)`, 'system');
+    }
+
+    // Safety scroll consumption for guaranteed 0% destruction at dangerous stages
+    let effectiveDestroyRate = Math.max(0, currentSword.destroyRate - researchDestroyReduce);
+    if (currentSword.destroyRate > 0) {
+      if (stats.useSafetyScrollAuto && newScrolls > 0) {
+        newScrolls -= 1;
+        effectiveDestroyRate = 0; // 100% destruction immunity!
+        addLog(`[보호서 소모] 파괴 방지 주문서 1장을 사용하여 파괴 위험을 차단했습니다. (남은 보호서: ${newScrolls}장)`, 'system');
+      } else if (stats.useSafetyScrollAuto && newScrolls <= 0) {
+        addLog(`[경고] 보호서가 소진되어 파괴 위험이 존재합니다!`, 'destroy');
+      }
     }
 
     const qteBonus = useQteBonus ? 10 : 0;
-    const totalSuccessChance = Math.min(100, Math.max(1, currentSword.successRate + researchSuccessBonus + runeLuckBonus + skinBonus + potionBonus + qteBonus));
+    let totalSuccessChance = Math.min(
+      100,
+      Math.max(1, currentSword.successRate + researchSuccessBonus + rebirthSuccessBonus + runeLuckBonus + skinBonus + potionBonus + qteBonus)
+    );
+
+    // 100% Cheat Mode
+    if (stats.cheatSuccessRate100) {
+      totalSuccessChance = 100;
+      effectiveDestroyRate = 0;
+    }
 
     const roll = Math.random() * 100;
     const isSuccess = roll < totalSuccessChance;
@@ -198,12 +300,21 @@ export default function App() {
     if (isSuccess) {
       // SUCCESS!
       const nextLvl = currentSword.level + 1;
-      const nextSwordObj = SWORDS_DATA[nextLvl];
+      const nextSwordObj = getWorldSword(currentWorldId, nextLvl);
       const newMax = Math.max(stats.maxSwordLevelReached, nextLvl);
       const newCodex = stats.unlockedCodex.includes(nextLvl) ? stats.unlockedCodex : [...stats.unlockedCodex, nextLvl];
 
       sound.playSuccess(nextLvl >= 10);
       addLog(`[강화 성공!] +${currentSword.level} → +${nextLvl} [${nextSwordObj.name}] 달성!`, 'success');
+
+      // Update world progress
+      const updatedWorldProgress = {
+        ...stats.worldProgress,
+        [currentWorldId]: {
+          currentSwordLevel: nextLvl,
+          maxSwordLevelReached: Math.max(stats.worldProgress?.[currentWorldId]?.maxSwordLevelReached || 0, nextLvl),
+        },
+      };
 
       setStats((prev) => ({
         ...prev,
@@ -213,6 +324,7 @@ export default function App() {
         luckyPotions: newPotions,
         currentSwordLevel: nextLvl,
         maxSwordLevelReached: newMax,
+        worldProgress: updatedWorldProgress,
         totalEnhanceAttempts: prev.totalEnhanceAttempts + 1,
         totalEnhanceSuccess: prev.totalEnhanceSuccess + 1,
         unlockedCodex: newCodex,
@@ -231,17 +343,10 @@ export default function App() {
 
       // Check Destruction
       let isDestroyed = false;
-      const effectiveDestroyRate = Math.max(0, currentSword.destroyRate - researchDestroyReduce);
-
       if (effectiveDestroyRate > 0) {
         const destroyRoll = Math.random() * 100;
         if (destroyRoll < effectiveDestroyRate) {
-          if (stats.useSafetyScrollAuto && newScrolls > 0) {
-            newScrolls -= 1;
-            addLog(`[보호서 발동] 파괴 위험을 막아냈습니다. (남은 보호서: ${newScrolls}장)`, 'system');
-          } else {
-            isDestroyed = true;
-          }
+          isDestroyed = true;
         }
       }
 
@@ -253,6 +358,14 @@ export default function App() {
         addLog(`[검 파괴] +${currentSword.level} ${currentSword.name}이(가) 산산조각났습니다! (파편 +${shardsGained}개 획득)`, 'destroy');
         setIsAutoEnhancing(false);
 
+        const updatedWorldProgress = {
+          ...stats.worldProgress,
+          [currentWorldId]: {
+            ...stats.worldProgress?.[currentWorldId],
+            currentSwordLevel: 0,
+          },
+        };
+
         setStats((prev) => ({
           ...prev,
           gold: newGold,
@@ -261,6 +374,7 @@ export default function App() {
           luckyPotions: newPotions,
           swordShards: newShards,
           currentSwordLevel: 0, // Reset to +0
+          worldProgress: updatedWorldProgress,
           totalEnhanceAttempts: prev.totalEnhanceAttempts + 1,
           totalEnhanceFails: prev.totalEnhanceFails + 1,
           totalSwordsDestroyed: prev.totalSwordsDestroyed + 1,
@@ -276,6 +390,14 @@ export default function App() {
           const droppedLvl = Math.max(0, currentSword.level - 1);
           addLog(`[강화 실패] 단계 하락: +${currentSword.level} → +${droppedLvl}`, 'drop');
 
+          const updatedWorldProgress = {
+            ...stats.worldProgress,
+            [currentWorldId]: {
+              ...stats.worldProgress?.[currentWorldId],
+              currentSwordLevel: droppedLvl,
+            },
+          };
+
           setStats((prev) => ({
             ...prev,
             gold: newGold,
@@ -283,6 +405,7 @@ export default function App() {
             ancientScrolls: newScrolls,
             luckyPotions: newPotions,
             currentSwordLevel: droppedLvl,
+            worldProgress: updatedWorldProgress,
             totalEnhanceAttempts: prev.totalEnhanceAttempts + 1,
             totalEnhanceFails: prev.totalEnhanceFails + 1,
           }));
@@ -326,20 +449,30 @@ export default function App() {
   // Sell Current Sword
   const handleSellSword = () => {
     if (currentSword.level <= 0) return;
+    const multipliers = calculateTotalMultipliers(stats);
     const goldBonus = (stats.researches['res_gold_mult'] || 0) * 0.15;
     let runeGoldBonus = 0;
     stats.equippedRunes.forEach((r) => {
       if (r && r.type === 'goldBonus') runeGoldBonus += r.value / 100;
     });
 
-    const finalGold = Math.floor(currentSword.sellPrice * (1 + goldBonus + runeGoldBonus));
+    const finalGold = Math.floor(currentSword.sellPrice * (1 + goldBonus + runeGoldBonus) * multipliers.totalGoldMult);
     sound.playCoin();
     addLog(`[판매] +${currentSword.level} ${currentSword.name} 판매 완료 (+${finalGold.toLocaleString()} 골드 획득)`, 'loot');
+
+    const updatedWorldProgress = {
+      ...stats.worldProgress,
+      [currentWorldId]: {
+        ...stats.worldProgress?.[currentWorldId],
+        currentSwordLevel: 0,
+      },
+    };
 
     setStats((prev) => ({
       ...prev,
       gold: prev.gold + finalGold,
       currentSwordLevel: 0,
+      worldProgress: updatedWorldProgress,
     }));
   };
 
@@ -350,28 +483,38 @@ export default function App() {
     sound.playCoin();
     addLog(`[분해] +${currentSword.level} ${currentSword.name} 분해 완료 (+${shardsGained}개 파편 획득)`, 'loot');
 
+    const updatedWorldProgress = {
+      ...stats.worldProgress,
+      [currentWorldId]: {
+        ...stats.worldProgress?.[currentWorldId],
+        currentSwordLevel: 0,
+      },
+    };
+
     setStats((prev) => ({
       ...prev,
       swordShards: prev.swordShards + shardsGained,
       currentSwordLevel: 0,
+      worldProgress: updatedWorldProgress,
     }));
   };
 
   // Dungeon Monster Defeated Loot Handler
   const handleMonsterDefeated = (monster: Monster, stageId: number) => {
+    const multipliers = calculateTotalMultipliers(stats);
     const goldBonus = (stats.researches['res_gold_mult'] || 0) * 0.15;
     let runeGoldBonus = 0;
     stats.equippedRunes.forEach((r) => {
       if (r && r.type === 'goldBonus') runeGoldBonus += r.value / 100;
     });
 
-    const earnedGold = Math.floor(monster.goldReward * (1 + goldBonus + runeGoldBonus));
-    const earnedStones = monster.stoneReward;
+    const earnedGold = Math.floor(monster.goldReward * (1 + goldBonus + runeGoldBonus) * multipliers.totalGoldMult);
+    const earnedStones = Math.floor(monster.stoneReward * (multipliers.rpStoneBonus || 1));
     const earnedDiamonds = monster.isBoss ? 20 : 0;
 
-    // 1% chance for protection scroll drop from boss
+    // Rare drop protection scroll from boss
     let scrollDrop = false;
-    if (monster.isBoss && Math.random() < 0.05) {
+    if (monster.isBoss && Math.random() < 0.08) {
       scrollDrop = true;
       addLog(`[희귀 드랍] 보스로부터 파괴 방지 주문서 1장을 획득했습니다!`, 'loot');
     }
@@ -408,6 +551,351 @@ export default function App() {
       },
     }));
     addLog(`[연구 완료] 대장간 연구 [${researchId}] 레벨업 완료!`, 'system');
+  };
+
+  // Rebirth Handler (Unlocked at 100k Gold)
+  const handleRebirth = () => {
+    if (stats.gold < 100000) return;
+
+    sound.playSuccess(true);
+    const newRebirthCount = (stats.rebirthCount || 0) + 1;
+
+    // RP calculated from Rebirth 10+
+    let pointsGained = 0;
+    if (newRebirthCount >= 10) {
+      pointsGained = Math.max(1, Math.floor(Math.log10(Math.max(1, stats.gold / 10000)))) + 1;
+    }
+
+    addLog(
+      `[환생 완료] ${newRebirthCount}회차 환생 성공! (영구 골드 획득량 +100% 누적${pointsGained > 0 ? `, +${pointsGained} RP 획득` : ''})`,
+      'boss'
+    );
+
+    const updatedWorldProgress = {
+      ...stats.worldProgress,
+      [currentWorldId]: {
+        ...stats.worldProgress?.[currentWorldId],
+        currentSwordLevel: 0,
+      },
+    };
+
+    setStats((prev) => ({
+      ...prev,
+      gold: 0,
+      currentSwordLevel: 0,
+      currentStageId: 1,
+      rebirthCount: newRebirthCount,
+      rebirthPoints: (prev.rebirthPoints || 0) + pointsGained,
+      worldProgress: updatedWorldProgress,
+    }));
+  };
+
+  // Super Rebirth Handler (Unlocked at 100 Rebirths)
+  const handleSuperRebirth = () => {
+    if ((stats.rebirthCount || 0) < 100) return;
+
+    sound.playSuccess(true);
+    const newSuperRebirthCount = (stats.superRebirthCount || 0) + 1;
+
+    addLog(
+      `[초환생 완료] 초환생 ${newSuperRebirthCount}회 달성! (모든 월드 전 능력치 x3배 및 골드 x5배 증폭, 상위 월드 포탈 개방!)`,
+      'boss'
+    );
+
+    const updatedWorldProgress = {
+      ...stats.worldProgress,
+      [currentWorldId]: {
+        ...stats.worldProgress?.[currentWorldId],
+        currentSwordLevel: 0,
+      },
+    };
+
+    setStats((prev) => ({
+      ...prev,
+      gold: 0,
+      currentSwordLevel: 0,
+      currentStageId: 1,
+      rebirthCount: 0, // Resets standard rebirth count
+      superRebirthCount: newSuperRebirthCount,
+      worldProgress: updatedWorldProgress,
+    }));
+  };
+
+  // Upgrade Rebirth Stat
+  const handleUpgradeRebirthStat = (statKey: string, cost: number) => {
+    if ((stats.rebirthPoints || 0) < cost) return;
+    setStats((prev) => ({
+      ...prev,
+      rebirthPoints: (prev.rebirthPoints || 0) - cost,
+      rebirthStats: {
+        ...prev.rebirthStats,
+        [statKey]: (prev.rebirthStats?.[statKey] || 0) + 1,
+      },
+    }));
+    addLog(`[환생 스탯] [${statKey}] 연구 레벨업 완료!`, 'system');
+  };
+
+  // Switch Multi-World
+  const handleSwitchWorld = (targetWorldId: number) => {
+    const targetWorld = WORLDS_DATA.find((w) => w.id === targetWorldId);
+    if (!targetWorld || stats.superRebirthCount < targetWorld.requiredSuperRebirth) return;
+
+    // Save current world progress
+    const updatedWorldProgress = {
+      ...stats.worldProgress,
+      [currentWorldId]: {
+        currentSwordLevel: stats.currentSwordLevel || 0,
+        maxSwordLevelReached: Math.max(stats.worldProgress?.[currentWorldId]?.maxSwordLevelReached || 0, stats.currentSwordLevel || 0),
+      },
+    };
+
+    const targetSavedLevel = updatedWorldProgress[targetWorldId]?.currentSwordLevel || 0;
+
+    setStats((prev) => ({
+      ...prev,
+      currentWorldId: targetWorldId,
+      currentSwordLevel: targetSavedLevel,
+      worldProgress: updatedWorldProgress,
+    }));
+
+    addLog(`[차원 전이] World ${targetWorldId} [${targetWorld.name}] 차원으로 이동했습니다. (장착 검: +${targetSavedLevel}강)`, 'system');
+  };
+
+  // Store Current Sword in Vault
+  const handleStoreSwordInVault = (sword: Sword) => {
+    const vaultMaxSlots = 3 + (stats.superRebirthCount || 0) * 2;
+    if ((stats.swordVault?.length || 0) >= vaultMaxSlots) return;
+
+    const newStoredSword: StoredSword = {
+      id: `${Date.now()}_${Math.random()}`,
+      worldId: stats.currentWorldId || 1,
+      name: sword.name,
+      level: sword.level,
+      rarity: sword.rarity,
+      atkBonus: Math.floor(sword.atk * 0.1),
+      goldBonus: Math.floor(sword.sellPrice * 0.05),
+      colorTheme: sword.colorTheme,
+      description: sword.description,
+      storedAt: Date.now(),
+    };
+
+    setStats((prev) => ({
+      ...prev,
+      swordVault: [...(prev.swordVault || []), newStoredSword],
+    }));
+
+    addLog(`[보관함 등록] +${sword.level} [${sword.name}]을 검 보관함에 영구 패시브로 등록했습니다!`, 'loot');
+  };
+
+  // Remove Sword from Vault
+  const handleRemoveSwordFromVault = (id: string) => {
+    setStats((prev) => ({
+      ...prev,
+      swordVault: (prev.swordVault || []).filter((s) => s.id !== id),
+    }));
+    addLog('[보관함] 검을 보관함에서 제거했습니다.', 'system');
+  };
+
+  // Unlock Tier Staircase
+  const handleUnlockTier = (tier: number, costGold: number) => {
+    if (stats.gold < costGold) return;
+
+    setStats((prev) => ({
+      ...prev,
+      gold: prev.gold - costGold,
+      unlockedTiers: [...(prev.unlockedTiers || []), tier],
+    }));
+
+    addLog(`[티어 계단 각성] Tier ${tier} 계단을 정복했습니다! 해당 월드의 모든 배수가 천문학적으로 증폭됩니다!`, 'boss');
+  };
+
+  // Trigger THE END True Ending
+  const handleTriggerTheEnd = () => {
+    setIsEndingActive(true);
+  };
+
+  // Complete THE END Ending sequence
+  const handleEndingComplete = () => {
+    setIsEndingActive(false);
+    // Reset to fresh start, but with cheat mode unlocked!
+    setStats({
+      ...DEFAULT_STATS,
+      cheatUnlocked: true,
+    });
+    localStorage.setItem(
+      STORAGE_KEY,
+      JSON.stringify({
+        ...DEFAULT_STATS,
+        cheatUnlocked: true,
+      })
+    );
+    setIsCheatModalOpen(true);
+    addLog('[THE END] 세계의 끝에 도달하여 창조주의 치트 권능(God Mode)을 획득했습니다!', 'boss');
+  };
+
+  // Cheat & Admin Handlers
+  const handleCheatAddResources = (
+    gold: number,
+    diamonds: number,
+    stones: number,
+    scrolls: number,
+    potions: number,
+    shards: number = 0
+  ) => {
+    setStats((prev) => {
+      // Also add all runes x99 if scrolls & potions are added in bulk
+      let nextRunes = [...prev.inventoryRunes];
+      INITIAL_RUNES.forEach((baseRune) => {
+        const existing = nextRunes.find((r) => r.id === baseRune.id);
+        if (existing) {
+          existing.count = Math.max(existing.count, 99);
+        } else {
+          nextRunes.push({ ...baseRune, count: 99 });
+        }
+      });
+
+      return {
+        ...prev,
+        gold: prev.gold + gold,
+        diamonds: prev.diamonds + diamonds,
+        enhancementStones: prev.enhancementStones + stones,
+        ancientScrolls: prev.ancientScrolls + scrolls,
+        luckyPotions: prev.luckyPotions + potions,
+        swordShards: prev.swordShards + shards,
+        inventoryRunes: nextRunes,
+      };
+    });
+    addLog(`[치트] 초월급 재화 및 신화 룬 팩이 대량 지급되었습니다.`, 'loot');
+  };
+
+  const handleCheatSetSwordLevel = (lvl: number) => {
+    const updatedWorldProgress = {
+      ...stats.worldProgress,
+      [currentWorldId]: {
+        ...stats.worldProgress?.[currentWorldId],
+        currentSwordLevel: lvl,
+        maxSwordLevelReached: Math.max(stats.worldProgress?.[currentWorldId]?.maxSwordLevelReached || 0, lvl),
+      },
+    };
+    const nextCodex = Array.from(new Set([...stats.unlockedCodex, lvl]));
+    setStats((prev) => ({
+      ...prev,
+      currentSwordLevel: lvl,
+      unlockedCodex: nextCodex,
+      worldProgress: updatedWorldProgress,
+    }));
+    addLog(`[치트] 현재 월드의 검이 +${lvl}강으로 즉시 설정되었습니다.`, 'success');
+  };
+
+  const handleCheatAddRebirths = (rebirth: number, superRebirth: number, rp: number = 0) => {
+    setStats((prev) => ({
+      ...prev,
+      rebirthCount: prev.rebirthCount + rebirth,
+      superRebirthCount: prev.superRebirthCount + superRebirth,
+      rebirthPoints: (prev.rebirthPoints || 0) + (rp || rebirth * 5),
+    }));
+    addLog(`[치트] 환생 +${rebirth}, 초환생 +${superRebirth}, RP +${rp || rebirth * 5} 지급 완료!`, 'boss');
+  };
+
+  const handleToggleCheatSuccess100 = () => {
+    setStats((prev) => ({
+      ...prev,
+      cheatSuccessRate100: !prev.cheatSuccessRate100,
+    }));
+  };
+
+  const handleToggleCheatDmg1000x = () => {
+    setStats((prev) => ({
+      ...prev,
+      cheatDmg1000x: !prev.cheatDmg1000x,
+    }));
+  };
+
+  // 1. Force Unlock All Ascension, Super Rebirth, All 10 Worlds & All 5 Tier Staircases
+  const handleForceUnlockAscensionAll = () => {
+    const populatedWorldProgress = { ...stats.worldProgress };
+    WORLDS_DATA.forEach((w) => {
+      if (!populatedWorldProgress[w.id]) {
+        populatedWorldProgress[w.id] = {
+          currentSwordLevel: 0,
+          maxSwordLevelReached: 0,
+          highestStageCleared: 0,
+        };
+      }
+    });
+
+    setStats((prev) => ({
+      ...prev,
+      rebirthCount: Math.max(prev.rebirthCount, 100),
+      superRebirthCount: Math.max(prev.superRebirthCount, 10),
+      rebirthPoints: Math.max(prev.rebirthPoints, 10000),
+      gold: Math.max(prev.gold, 100_000_000_000_000_000),
+      unlockedTiers: [1, 2, 3, 4, 5],
+      worldProgress: populatedWorldProgress,
+    }));
+    addLog('[👑 어드민 특권] 환생 100회, 초환생 10회, 10대 월드 차원 포탈 및 5대 티어 계단이 강제 전면 해금되었습니다!', 'boss');
+  };
+
+  // 2. Max Out All 5 Elements & Blacksmith Research
+  const handleMaxOutAllElementsAndResearch = () => {
+    setStats((prev) => ({
+      ...prev,
+      elementLevel: {
+        none: 100,
+        fire: 100,
+        ice: 100,
+        lightning: 100,
+        holy: 100,
+        dark: 100,
+      },
+      researches: {
+        res_success: 50,
+        res_destroy_reduce: 50,
+        res_gold_mult: 50,
+        res_auto_mine: 50,
+        res_crit_boost: 50,
+        res_qte_window: 50,
+      },
+    }));
+    addLog('[👑 어드민 특권] 불·얼음·번개·신성·암흑 5대 속성 Lv.100 및 대장간 모든 연구가 MAX로 마스터되었습니다!', 'boss');
+  };
+
+  // 3. Instant Clear All Dungeon Stages & 100% Codex / Achievements
+  const handleInstaClearDungeonsAndCodex = () => {
+    const allCodex = Array.from({ length: 36 }, (_, i) => i);
+    const allAchievements = INITIAL_ACHIEVEMENTS.map((a) => a.id);
+
+    setStats((prev) => ({
+      ...prev,
+      highestStageCleared: 100,
+      currentStageId: 100,
+      unlockedCodex: allCodex,
+      completedAchievements: allAchievements,
+      diamonds: prev.diamonds + 100000,
+    }));
+    addLog('[👑 어드민 특권] 던전 1~100 스테이지 올 클리어, 35종 전설 검 도감 100% 완성 및 모든 업적이 달성되었습니다!', 'boss');
+  };
+
+  // 4. Instant Direct True Ending Cinematic Trigger
+  const handleTriggerTheEndDirectly = () => {
+    setIsCheatModalOpen(false);
+    setIsEndingActive(true);
+    addLog('[👑 어드민 특권] THE END 시네마틱 진엔딩 연출을 즉시 실행합니다.', 'boss');
+  };
+
+  // 5. Custom Numerical Rebirth Injector
+  const handleCustomInjectRebirth = (rebirth: number, superRebirth: number, rp: number) => {
+    setStats((prev) => ({
+      ...prev,
+      rebirthCount: prev.rebirthCount + rebirth,
+      superRebirthCount: prev.superRebirthCount + superRebirth,
+      rebirthPoints: (prev.rebirthPoints || 0) + rp,
+    }));
+    addLog(`[👑 어드민] 환생 +${rebirth}회, 초환생 +${superRebirth}회, 환생포인트 +${rp} RP가 정밀 주입되었습니다.`, 'boss');
+  };
+
+  const handleUnlockAllTiersAndWorlds = () => {
+    handleForceUnlockAscensionAll();
   };
 
   // Anvil Skin Select
@@ -621,12 +1109,14 @@ export default function App() {
       <Navbar
         stats={stats}
         onOpenSaveModal={() => setIsSaveModalOpen(true)}
+        onOpenCheatModal={() => setIsCheatModalOpen(true)}
+        onVersionClick={handleVersionClick}
         activeTab={activeTab}
         setActiveTab={setActiveTab}
       />
 
       {/* Main Viewport Container */}
-      <main className="flex-1 w-full pb-16">
+      <main className="flex-1 w-full pb-10">
         {activeTab === 'anvil' && (
           <AnvilView
             stats={stats}
@@ -638,10 +1128,16 @@ export default function App() {
             logs={logs}
             researches={stats.researches}
             onToggleAutoEnhance={(target) => {
-              stats.autoEnhanceTarget = target;
+              setStats((prev) => ({ ...prev, autoEnhanceTarget: target }));
               setIsAutoEnhancing(!isAutoEnhancing);
             }}
             isAutoEnhancing={isAutoEnhancing}
+            onToggleSafetyScroll={(enabled) => {
+              setStats((prev) => ({ ...prev, useSafetyScrollAuto: enabled }));
+            }}
+            onToggleLuckyPotion={(enabled) => {
+              setStats((prev) => ({ ...prev, useLuckyPotionAuto: enabled }));
+            }}
           />
         )}
 
@@ -652,6 +1148,28 @@ export default function App() {
             onMonsterDefeated={handleMonsterDefeated}
             onStageClear={handleStageClear}
             researches={stats.researches}
+          />
+        )}
+
+        {activeTab === 'prestige' && (
+          <PrestigeView
+            stats={stats}
+            currentSword={currentSword}
+            onRebirth={handleRebirth}
+            onSuperRebirth={handleSuperRebirth}
+            onUpgradeRebirthStat={handleUpgradeRebirthStat}
+            onSwitchWorld={handleSwitchWorld}
+            onStoreSwordInVault={handleStoreSwordInVault}
+            onRemoveSwordFromVault={handleRemoveSwordFromVault}
+          />
+        )}
+
+        {activeTab === 'tier_staircase' && (
+          <TierStaircaseView
+            stats={stats}
+            currentSword={currentSword}
+            onUnlockTier={handleUnlockTier}
+            onTriggerTheEnd={handleTriggerTheEnd}
           />
         )}
 
@@ -691,6 +1209,84 @@ export default function App() {
           />
         )}
       </main>
+
+      {/* Page Bottom Footer with Version Click Trigger */}
+      <footer className="w-full bg-neutral-950 border-t border-neutral-800/80 py-3 px-4 text-xs font-mono text-neutral-400 select-none">
+        <div className="max-w-7xl mx-auto flex flex-col sm:flex-row items-center justify-between gap-2.5">
+          <div className="flex items-center gap-2">
+            <button
+              onClick={handleVersionClick}
+              className={`px-2.5 py-1 rounded border transition-all cursor-pointer font-bold flex items-center gap-1.5 ${
+                versionClicks > 0
+                  ? 'bg-amber-950/80 border-amber-400 text-amber-300 shadow-[0_0_10px_rgba(245,158,11,0.3)]'
+                  : 'bg-neutral-900 hover:bg-neutral-850 border-neutral-800 hover:border-neutral-700 text-neutral-400 hover:text-neutral-200'
+              }`}
+              title="버전 버튼 (3회 연속 클릭 시 어드민 인증 창 오픈)"
+            >
+              <span>Pixel Sword Master v1.3.0</span>
+              {versionClicks > 0 && versionClicks < 3 && (
+                <span className="text-amber-400 text-[10px] bg-amber-900/60 px-1 py-0.2 rounded font-bold animate-pulse">
+                  클릭 {versionClicks}/3
+                </span>
+              )}
+              {stats.adminUnlocked && (
+                <span className="text-rose-400 text-[10px] bg-rose-950/90 px-1.5 py-0.5 rounded border border-rose-700">
+                  👑 ADMIN
+                </span>
+              )}
+            </button>
+            <span className="text-neutral-700 hidden sm:inline">•</span>
+            <span className="text-[11px] text-neutral-500">픽셀 검 강화하기 방치형 RPG</span>
+          </div>
+
+          <div className="flex items-center gap-3">
+            {(stats.adminUnlocked || stats.cheatUnlocked) && (
+              <button
+                onClick={() => {
+                  sound.playSuccess();
+                  setIsCheatModalOpen(true);
+                }}
+                className="text-xs text-amber-400 hover:text-amber-300 font-bold flex items-center gap-1 cursor-pointer bg-neutral-900 px-2.5 py-1 rounded border border-amber-500/50 hover:bg-neutral-800 transition-colors"
+              >
+                <span>👑 어드민 치트 메뉴 열기</span>
+              </button>
+            )}
+            <span className="text-[11px] text-neutral-600 font-mono">
+              비밀번호 인증 모드 지원
+            </span>
+          </div>
+        </div>
+      </footer>
+
+      {/* Admin Password Verification Modal */}
+      <AdminPasswordModal
+        isOpen={isAdminPasswordModalOpen}
+        onClose={() => setIsAdminPasswordModalOpen(false)}
+        onSuccess={handleAdminSuccess}
+      />
+
+      {/* Ending Cinematic Modal (THE END) */}
+      {isEndingActive && <EndingCinematicModal onComplete={handleEndingComplete} />}
+
+      {/* Enhanced God Mode / Admin Cheat Modal */}
+      {isCheatModalOpen && (
+        <CheatModal
+          stats={stats}
+          onClose={() => setIsCheatModalOpen(false)}
+          onAddResources={handleCheatAddResources}
+          onSetSwordLevel={handleCheatSetSwordLevel}
+          onAddRebirths={handleCheatAddRebirths}
+          onToggleCheatSuccess100={handleToggleCheatSuccess100}
+          onToggleCheatDmg1000x={handleToggleCheatDmg1000x}
+          onUnlockAllTiersAndWorlds={handleUnlockAllTiersAndWorlds}
+          onForceUnlockAscensionAll={handleForceUnlockAscensionAll}
+          onMaxOutAllElementsAndResearch={handleMaxOutAllElementsAndResearch}
+          onInstaClearDungeonsAndCodex={handleInstaClearDungeonsAndCodex}
+          onTriggerTheEndDirectly={handleTriggerTheEndDirectly}
+          onCustomInjectRebirth={handleCustomInjectRebirth}
+          onCustomSetSwordLevelDirect={handleCheatSetSwordLevel}
+        />
+      )}
 
       {/* Save & Backup Modal */}
       {isSaveModalOpen && (

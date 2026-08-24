@@ -20,6 +20,8 @@ interface AnvilViewProps {
   researches: Record<string, number>;
   onToggleAutoEnhance: (target: number) => void;
   isAutoEnhancing: boolean;
+  onToggleSafetyScroll: (enabled: boolean) => void;
+  onToggleLuckyPotion: (enabled: boolean) => void;
 }
 
 export const AnvilView: React.FC<AnvilViewProps> = ({
@@ -33,9 +35,12 @@ export const AnvilView: React.FC<AnvilViewProps> = ({
   researches,
   onToggleAutoEnhance,
   isAutoEnhancing,
+  onToggleSafetyScroll,
+  onToggleLuckyPotion,
 }) => {
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
-  const [frame, setFrame] = useState(0);
+  const frameRef = useRef(0);
+  const isStrikingRef = useRef(false);
   const [isStriking, setIsStriking] = useState(false);
   const [showAutoModal, setShowAutoModal] = useState(false);
   const [targetLevel, setTargetLevel] = useState(stats.autoEnhanceTarget || 10);
@@ -47,11 +52,11 @@ export const AnvilView: React.FC<AnvilViewProps> = ({
   // QTE golden zone settings
   const qteBonusWindow = 15 + (researches['res_qte_window'] || 0) * 2; // e.g. 15% to 35% of bar width
 
-  // Animation Loop for Canvas
+  // Smooth Canvas Animation Loop without re-rendering React component
   useEffect(() => {
     let animationId: number;
     const render = () => {
-      setFrame((prev) => prev + 1);
+      frameRef.current += 1;
       const canvas = canvasRef.current;
       if (canvas) {
         const ctx = canvas.getContext('2d');
@@ -62,8 +67,8 @@ export const AnvilView: React.FC<AnvilViewProps> = ({
             canvas.width,
             canvas.height,
             stats.elementInfusion,
-            frame,
-            isStriking
+            frameRef.current,
+            isStrikingRef.current
           );
         }
       }
@@ -71,7 +76,12 @@ export const AnvilView: React.FC<AnvilViewProps> = ({
     };
     render();
     return () => cancelAnimationFrame(animationId);
-  }, [currentSword, stats.elementInfusion, frame, isStriking]);
+  }, [currentSword, stats.elementInfusion]);
+
+  // Keep isStrikingRef in sync
+  useEffect(() => {
+    isStrikingRef.current = isStriking;
+  }, [isStriking]);
 
   // QTE Bar Animation
   useEffect(() => {
@@ -315,7 +325,7 @@ export const AnvilView: React.FC<AnvilViewProps> = ({
                   type="checkbox"
                   checked={stats.useSafetyScrollAuto}
                   onChange={(e) => {
-                    stats.useSafetyScrollAuto = e.target.checked;
+                    onToggleSafetyScroll(e.target.checked);
                     sound.playClick();
                   }}
                   className="accent-emerald-500 w-4 h-4 cursor-pointer"
@@ -330,7 +340,7 @@ export const AnvilView: React.FC<AnvilViewProps> = ({
                   type="checkbox"
                   checked={stats.useLuckyPotionAuto}
                   onChange={(e) => {
-                    stats.useLuckyPotionAuto = e.target.checked;
+                    onToggleLuckyPotion(e.target.checked);
                     sound.playClick();
                   }}
                   className="accent-rose-500 w-4 h-4 cursor-pointer"
@@ -644,7 +654,7 @@ export const AnvilView: React.FC<AnvilViewProps> = ({
                     type="checkbox"
                     checked={stats.useSafetyScrollAuto}
                     onChange={(e) => {
-                      stats.useSafetyScrollAuto = e.target.checked;
+                      onToggleSafetyScroll(e.target.checked);
                       sound.playClick();
                     }}
                     className="accent-emerald-500 w-4 h-4 cursor-pointer"
@@ -659,7 +669,7 @@ export const AnvilView: React.FC<AnvilViewProps> = ({
                     type="checkbox"
                     checked={stats.useLuckyPotionAuto}
                     onChange={(e) => {
-                      stats.useLuckyPotionAuto = e.target.checked;
+                      onToggleLuckyPotion(e.target.checked);
                       sound.playClick();
                     }}
                     className="accent-rose-500 w-4 h-4 cursor-pointer"
