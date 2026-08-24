@@ -1,0 +1,32 @@
+<!doctype html>
+<html lang="ko">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>픽셀 검 강화하기 - Pixel Sword Master</title>
+    <meta name="description" content="다양한 픽셀 검 강화, 던전 사냥, 보스 레이드, 대장간 연구가 가득한 레트로 픽셀 강화 시뮬레이션 게임" />
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=DotGothic16&family=Press+Start+2P&family=VT323&display=swap" rel="stylesheet">
+    <style>
+      @import url("https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.min.css");
+      
+      * {
+        image-rendering: pixelated;
+        image-rendering: -moz-crisp-edges;
+        image-rendering: crisp-edges;
+      }
+      .font-pixel {
+        font-family: 'DotGothic16', 'Press Start 2P', monospace, sans-serif;
+      }
+      .font-retro-eng {
+        font-family: 'Press Start 2P', 'VT323', monospace;
+      }
+    </style>
+  </head>
+  <body class="bg-neutral-950 text-neutral-100 selection:bg-amber-500 selection:text-neutral-950 font-pixel antialiased overflow-x-hidden">
+    <div id="root"></div>
+    <script type="module" src="/src/main.tsx"></script>
+  </body>
+</html>
+

@@ -1,0 +1,6 @@
+{
+  "name": "픽셀 검 강화하기 (Pixel Sword Master)",
+  "description": "다양한 픽셀 검 강화, 던전 사냥, 보스 레이드, 대장간 연구, 도감 수집이 가득한 레트로 픽셀 강화 시뮬레이션 게임",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
