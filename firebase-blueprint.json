@@ -1,0 +1,23 @@
+{
+  "entities": {
+    "parties": {
+      "title": "Party Rooms",
+      "description": "Real-time multiplayer co-op party rooms for Dungeon, World Boss, and Infinite Spire",
+      "properties": {
+        "id": { "type": "string" },
+        "roomCode": { "type": "string" },
+        "roomName": { "type": "string" },
+        "targetType": { "type": "string" },
+        "targetId": { "type": "string" },
+        "targetFloor": { "type": "number" },
+        "hostUid": { "type": "string" },
+        "hostName": { "type": "string" },
+        "status": { "type": "string" },
+        "maxMembers": { "type": "number" },
+        "createdAt": { "type": "string" },
+        "bossHp": { "type": "number" },
+        "bossMaxHp": { "type": "number" }
+      }
+    }
+  }
+}

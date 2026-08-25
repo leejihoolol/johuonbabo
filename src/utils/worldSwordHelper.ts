@@ -169,27 +169,99 @@ export function calculateTotalMultipliers(stats: PlayerStats) {
     staircaseWorldGoldMult *= 1000000;
   }
 
-  // 6. Cheat Mode Multiplier
+  // 6. Active Sword Spirit Multipliers (검령 소울 링크)
+  let spiritAtkMult = 1;
+  let spiritGoldMult = 1;
+  let spiritCritBonus = 0;
+  if (stats.activeSpiritId && stats.swordSpirits) {
+    const activeSpirit = stats.swordSpirits.find((s) => s.id === stats.activeSpiritId && s.unlocked);
+    if (activeSpirit) {
+      const moodBonus = activeSpirit.mood === 'ecstatic' ? 1.5 : activeSpirit.mood === 'happy' ? 1.2 : 1.0;
+      const starBonus = 1 + (activeSpirit.stars - 1) * 0.25;
+      const levelBonus = 1 + (activeSpirit.level - 1) * 0.05;
+      spiritAtkMult = 1 + (activeSpirit.atkMultiplier - 1) * starBonus * levelBonus * moodBonus;
+      spiritGoldMult = 1 + (activeSpirit.goldMultiplier - 1) * starBonus * levelBonus * moodBonus;
+      spiritCritBonus = activeSpirit.critBonus * starBonus;
+    }
+  }
+
+  // 7. Cosmic Relics Multipliers (성유물)
+  let relicAtkBonus = 0;
+  let relicGoldBonus = 0;
+  let relicEnhanceBonus = 0;
+  let relicBossDamageBonus = 0;
+  (stats.cosmicRelics || []).forEach((r) => {
+    if (r.unlocked) {
+      relicAtkBonus += r.atkBonusPercent * (1 + (r.level - 1) * 0.2);
+      relicGoldBonus += r.goldBonusPercent * (1 + (r.level - 1) * 0.2);
+      relicEnhanceBonus += r.enhanceSuccessPercent * (1 + (r.level - 1) * 0.1);
+      relicBossDamageBonus += r.bossDamagePercent * (1 + (r.level - 1) * 0.2);
+    }
+  });
+  const relicAtkMult = 1 + relicAtkBonus / 100;
+  const relicGoldMult = 1 + relicGoldBonus / 100;
+
+  // 8. Socket Gems Multipliers (소켓 보석)
+  let gemAtkBonus = 0;
+  let gemGoldBonus = 0;
+  let gemCritDmgBonus = 0;
+  let gemEnhanceBonus = 0;
+  (stats.socketGems || []).forEach((g) => {
+    if (g.isEquipped) {
+      if (g.statType === 'atk' || g.statType === 'all') gemAtkBonus += g.statValue;
+      if (g.statType === 'gold' || g.statType === 'all') gemGoldBonus += g.statValue;
+      if (g.statType === 'critDmg' || g.statType === 'all') gemCritDmgBonus += g.statValue * 2;
+      if (g.statType === 'enhanceRate') gemEnhanceBonus += g.statValue;
+    }
+  });
+  const gemAtkMult = 1 + gemAtkBonus / 100;
+  const gemGoldMult = 1 + gemGoldBonus / 100;
+
+  // 9. Cheat Mode Multiplier
   const cheatAtkMult = stats.cheatDmg1000x ? 1000 : 1;
 
   // Final combined multipliers
-  const totalAtkMult = rpAtkMult * superRebirthAtkMult * vaultAtkMult * staircaseWorldAtkMult * cheatAtkMult;
-  const totalGoldMult = rebirthGoldMult * rpGoldMult * superRebirthGoldMult * vaultGoldMult * staircaseWorldGoldMult;
+  const totalAtkMult =
+    rpAtkMult *
+    superRebirthAtkMult *
+    vaultAtkMult *
+    staircaseWorldAtkMult *
+    spiritAtkMult *
+    relicAtkMult *
+    gemAtkMult *
+    cheatAtkMult;
+
+  const totalGoldMult =
+    rebirthGoldMult *
+    rpGoldMult *
+    superRebirthGoldMult *
+    vaultGoldMult *
+    staircaseWorldGoldMult *
+    spiritGoldMult *
+    relicGoldMult *
+    gemGoldMult;
 
   return {
     rebirthGoldMult,
     rpAtkMult,
     rpGoldMult,
-    rpSuccessBonus,
+    rpSuccessBonus: rpSuccessBonus + relicEnhanceBonus + gemEnhanceBonus,
     rpStoneBonus,
-    rpCritBonus,
-    rpCritDmgBonus,
+    rpCritBonus: rpCritBonus + spiritCritBonus,
+    rpCritDmgBonus: rpCritDmgBonus + gemCritDmgBonus,
     superRebirthAtkMult,
     superRebirthGoldMult,
     vaultAtkMult,
     vaultGoldMult,
     staircaseWorldAtkMult,
     staircaseWorldGoldMult,
+    spiritAtkMult,
+    spiritGoldMult,
+    relicAtkMult,
+    relicGoldMult,
+    relicBossDamageBonus,
+    gemAtkMult,
+    gemGoldMult,
     cheatAtkMult,
     totalAtkMult,
     totalGoldMult,

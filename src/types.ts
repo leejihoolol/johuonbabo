@@ -41,6 +41,22 @@ export interface Rune {
   count: number;
 }
 
+export type MonsterSpriteType = 
+  | 'slime' 
+  | 'goblin' 
+  | 'skeleton' 
+  | 'orc' 
+  | 'golem' 
+  | 'wyrm' 
+  | 'dragon' 
+  | 'demon_lord' 
+  | 'void_god'
+  | 'elemental'
+  | 'machine'
+  | 'angel'
+  | 'tentacle_abyss'
+  | 'celestial_dragon';
+
 export interface Monster {
   id: string;
   name: string;
@@ -53,12 +69,14 @@ export interface Monster {
   expReward: number;
   isBoss?: boolean;
   elementWeakness?: ElementType;
-  spriteType: 'slime' | 'goblin' | 'skeleton' | 'orc' | 'golem' | 'wyrm' | 'dragon' | 'demon_lord' | 'void_god';
+  spriteType: MonsterSpriteType;
   color: string;
+  worldId?: number;
 }
 
 export interface DungeonStage {
   id: number;
+  worldId: number;
   name: string;
   description: string;
   recommendedAtk: number;
@@ -67,6 +85,90 @@ export interface DungeonStage {
   monsters: Omit<Monster, 'currentHp'>[];
   background: string;
   unlockRequirementLevel: number;
+  firstClearReward?: {
+    diamonds: number;
+    scrolls?: number;
+    spiritDust?: number;
+  };
+}
+
+// 1. World Boss Raid Types
+export interface WorldBoss {
+  id: string;
+  name: string;
+  title: string;
+  maxHp: number;
+  currentHp: number;
+  defense: number;
+  element: ElementType;
+  weakness: ElementType;
+  spriteType: MonsterSpriteType;
+  color: string;
+  bgGradient: string;
+  timeLimit: number; // in seconds
+  description: string;
+  phases: number;
+}
+
+export interface CosmicRelic {
+  id: string;
+  name: string;
+  rarity: Rarity;
+  level: number;
+  maxLevel: number;
+  effectDescription: string;
+  atkBonusPercent: number;
+  goldBonusPercent: number;
+  enhanceSuccessPercent: number;
+  bossDamagePercent: number;
+  icon: string;
+  unlocked: boolean;
+}
+
+// 2. Spire of Trials (무한의 검탑) Types
+export interface SpireFloor {
+  floor: number;
+  name: string;
+  modifierText: string;
+  modifierType: 'none' | 'fire_boost' | 'crit_immune' | 'fast_attack' | 'mirror_dmg' | 'heavy_armor';
+  monster: Monster;
+  rewardDiamonds: number;
+  rewardGem?: SocketGem;
+  rewardDust: number;
+}
+
+export interface SocketGem {
+  id: string;
+  name: string;
+  type: 'ruby' | 'sapphire' | 'emerald' | 'topaz' | 'amethyst' | 'diamond';
+  tier: number; // 1 ~ 5
+  statType: 'atk' | 'critDmg' | 'enhanceRate' | 'gold' | 'speed' | 'all';
+  statValue: number;
+  icon: string;
+  color: string;
+  isEquipped?: boolean;
+}
+
+// 3. Unique Signature Content: Sword Spirits (검령의 연성 공방 & 소울 링크)
+export interface SwordSpirit {
+  id: string;
+  name: string;
+  title: string;
+  element: ElementType;
+  avatarColor: string;
+  personality: string;
+  catchphrase: string;
+  dialogue: string[];
+  level: number; // 1 ~ 50
+  stars: number; // 1 ~ 5
+  affection: number; // 0 ~ 100
+  mood: 'ecstatic' | 'happy' | 'normal' | 'sleepy';
+  atkMultiplier: number; // e.g. 1.3 (+30%)
+  critBonus: number;
+  goldMultiplier: number;
+  specialSkillName: string;
+  specialSkillDesc: string;
+  unlocked: boolean;
 }
 
 export interface Skill {
@@ -209,6 +311,24 @@ export interface PlayerStats {
   // Tier Staircase (Unlocked after 10 Super Rebirths)
   unlockedTiers: number[];
   
+  // Sword Spirits (검령의 연성 공방)
+  swordSpirits?: SwordSpirit[];
+  activeSpiritId?: string | null;
+  spiritDust?: number; // Used for spirit leveling & fusion
+  
+  // Infinite Spire (무한의 검탑)
+  towerFloor?: number;
+  towerHighestFloor?: number;
+  spireCurrentFloor?: number;
+  spireMaxFloor?: number;
+  socketGems?: SocketGem[];
+  equippedGemIds?: string[];
+  
+  // World Boss & Cosmic Relics (월드 보스 대토벌)
+  worldBossHighScore?: number;
+  worldBossRaidTokens?: number;
+  cosmicRelics?: CosmicRelic[];
+  
   // The End & Cheat Mode & Admin Console
   theEndCompleted?: boolean;
   cheatUnlocked?: boolean;
@@ -223,4 +343,58 @@ export interface PlayerStats {
   musicEnabled: boolean;
   screenShake: boolean;
   damageNumbers: boolean;
+
+  // Player Profile & Party
+  playerName?: string;
+  playerAvatar?: string;
+  activePartyRoomId?: string | null;
 }
+
+export type PartyTargetType = 'dungeon' | 'world_boss' | 'spire';
+
+export interface PartyMember {
+  uid: string;
+  name: string;
+  avatar: string;
+  swordName: string;
+  swordLevel: number;
+  swordAtk: number;
+  isHost: boolean;
+  isReady: boolean;
+  currentHp: number;
+  maxHp: number;
+  totalDamage: number;
+  lastActive: number;
+}
+
+export interface PartyChatMessage {
+  id: string;
+  senderUid: string;
+  senderName: string;
+  text: string;
+  timestamp: number;
+  isSystem?: boolean;
+}
+
+export interface PartyRoom {
+  id: string;
+  roomCode: string;
+  roomName: string;
+  targetType: PartyTargetType;
+  targetId: string | number;
+  targetTitle: string;
+  hostUid: string;
+  hostName: string;
+  status: 'waiting' | 'battling' | 'victory' | 'defeat';
+  maxMembers: number;
+  members: Record<string, PartyMember>;
+  bossHp: number;
+  bossMaxHp: number;
+  bossName: string;
+  bossSpriteType?: MonsterSpriteType;
+  bossColor?: string;
+  createdAt: number;
+  startedAt?: number;
+  clearedAt?: number;
+}
+

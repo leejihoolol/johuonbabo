@@ -13,11 +13,16 @@ import { SaveModal } from './components/SaveModal';
 import { CheatModal } from './components/CheatModal';
 import { AdminPasswordModal } from './components/AdminPasswordModal';
 import { EndingCinematicModal } from './components/EndingCinematicModal';
+import { PartyLobbyModal } from './components/PartyLobbyModal';
 
-import { Achievement, ElementType, GameLog, Monster, PlayerStats, Rune, StoredSword, Sword } from './types';
+import { Achievement, ElementType, GameLog, Monster, PartyRoom, PlayerStats, Rune, StoredSword, Sword } from './types';
 import { SWORDS_DATA } from './data/swords';
 import { WORLDS_DATA, TIER_STAIRCASES_DATA } from './data/worlds';
 import { INITIAL_ACHIEVEMENTS, INITIAL_RUNES } from './data/research';
+import { COSMIC_RELICS_DATA, INITIAL_SWORD_SPIRITS } from './data/contentsData';
+import { WorldBossView } from './components/WorldBossView';
+import { SwordTowerView } from './components/SwordTowerView';
+import { SwordSpiritView } from './components/SwordSpiritView';
 import { sound } from './utils/sound';
 import { getWorldSword, calculateTotalMultipliers } from './utils/worldSwordHelper';
 
@@ -30,6 +35,7 @@ const DEFAULT_STATS: PlayerStats = {
   ancientScrolls: 2,
   luckyPotions: 1,
   swordShards: 0,
+  spiritDust: 50,
 
   currentSwordLevel: 0,
   maxSwordLevelReached: 0,
@@ -99,6 +105,16 @@ const DEFAULT_STATS: PlayerStats = {
   swordVault: [],
   unlockedTiers: [],
 
+  // New Content Stats
+  worldBossHighScore: 0,
+  worldBossRaidTokens: 100,
+  cosmicRelics: COSMIC_RELICS_DATA,
+  spireCurrentFloor: 1,
+  spireMaxFloor: 0,
+  socketGems: [],
+  swordSpirits: INITIAL_SWORD_SPIRITS,
+  activeSpiritId: 'spirit_igna',
+
   // Cheat Mode & Admin
   cheatUnlocked: false,
   adminUnlocked: false,
@@ -126,6 +142,9 @@ export default function App() {
   const [isSaveModalOpen, setIsSaveModalOpen] = useState(false);
   const [isCheatModalOpen, setIsCheatModalOpen] = useState(false);
   const [isAdminPasswordModalOpen, setIsAdminPasswordModalOpen] = useState(false);
+  const [isPartyModalOpen, setIsPartyModalOpen] = useState(false);
+  const [activePartyRoom, setActivePartyRoom] = useState<PartyRoom | null>(null);
+  const [partyPresetTarget, setPartyPresetTarget] = useState<any>(null);
   const [isEndingActive, setIsEndingActive] = useState(false);
   const [isAutoEnhancing, setIsAutoEnhancing] = useState(false);
 
@@ -519,11 +538,14 @@ export default function App() {
       addLog(`[희귀 드랍] 보스로부터 파괴 방지 주문서 1장을 획득했습니다!`, 'loot');
     }
 
+    const earnedDust = monster.isBoss ? Math.floor(Math.random() * 20) + 15 : (Math.random() < 0.4 ? Math.floor(Math.random() * 3) + 1 : 0);
+
     setStats((prev) => ({
       ...prev,
       gold: prev.gold + earnedGold,
       enhancementStones: prev.enhancementStones + earnedStones,
       diamonds: prev.diamonds + earnedDiamonds,
+      spiritDust: (prev.spiritDust || 0) + earnedDust,
       ancientScrolls: scrollDrop ? prev.ancientScrolls + 1 : prev.ancientScrolls,
     }));
   };
@@ -1103,6 +1125,31 @@ export default function App() {
     addLog('[초기화] 모든 게임 데이터가 초기화되었습니다.', 'system');
   };
 
+  const handleOpenPartyModal = (presetTarget?: any) => {
+    if (presetTarget) {
+      setPartyPresetTarget(presetTarget);
+    } else {
+      setPartyPresetTarget(null);
+    }
+    setIsPartyModalOpen(true);
+  };
+
+  const handleStartPartyBattle = (room: PartyRoom) => {
+    setActivePartyRoom(room);
+    setIsPartyModalOpen(false);
+
+    if (room.targetType === 'spire') {
+      setActiveTab('spire');
+      addLog(`[파티 레이드] '${room.targetTitle}' 파티 전투에 돌입합니다!`, 'boss');
+    } else if (room.targetType === 'world_boss') {
+      setActiveTab('world_boss');
+      addLog(`[파티 레이드] 월드 보스 '${room.targetTitle}' 파티 토벌에 돌입합니다!`, 'boss');
+    } else if (room.targetType === 'dungeon') {
+      setActiveTab('dungeon');
+      addLog(`[파티 레이드] '${room.targetTitle}' 파티 원정에 돌입합니다!`, 'boss');
+    }
+  };
+
   return (
     <div className="min-h-screen bg-neutral-950 text-neutral-100 flex flex-col selection:bg-amber-500 selection:text-neutral-950">
       {/* Top Header & Resources Navigation */}
@@ -1110,6 +1157,7 @@ export default function App() {
         stats={stats}
         onOpenSaveModal={() => setIsSaveModalOpen(true)}
         onOpenCheatModal={() => setIsCheatModalOpen(true)}
+        onOpenPartyModal={() => handleOpenPartyModal()}
         onVersionClick={handleVersionClick}
         activeTab={activeTab}
         setActiveTab={setActiveTab}
@@ -1148,6 +1196,37 @@ export default function App() {
             onMonsterDefeated={handleMonsterDefeated}
             onStageClear={handleStageClear}
             researches={stats.researches}
+          />
+        )}
+
+        {activeTab === 'world_boss' && (
+          <WorldBossView
+            stats={stats}
+            currentSword={currentSword}
+            onUpdateStats={setStats}
+            addLog={addLog}
+            onOpenPartyModal={handleOpenPartyModal}
+            activePartyRoom={activePartyRoom}
+          />
+        )}
+
+        {activeTab === 'spire' && (
+          <SwordTowerView
+            stats={stats}
+            currentSword={currentSword}
+            onUpdateStats={setStats}
+            addLog={addLog}
+            onOpenPartyModal={handleOpenPartyModal}
+            activePartyRoom={activePartyRoom}
+          />
+        )}
+
+        {activeTab === 'sword_spirit' && (
+          <SwordSpiritView
+            stats={stats}
+            currentSword={currentSword}
+            onUpdateStats={setStats}
+            addLog={addLog}
           />
         )}
 
@@ -1285,6 +1364,18 @@ export default function App() {
           onTriggerTheEndDirectly={handleTriggerTheEndDirectly}
           onCustomInjectRebirth={handleCustomInjectRebirth}
           onCustomSetSwordLevelDirect={handleCheatSetSwordLevel}
+        />
+      )}
+
+      {/* Real-time Firebase Party Lobby Modal */}
+      {isPartyModalOpen && (
+        <PartyLobbyModal
+          stats={stats}
+          currentSword={currentSword}
+          isOpen={isPartyModalOpen}
+          onClose={() => setIsPartyModalOpen(false)}
+          onStartBattle={handleStartPartyBattle}
+          presetTarget={partyPresetTarget}
         />
       )}
 

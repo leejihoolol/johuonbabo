@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Volume2, VolumeX, Music, HardDrive, Sparkles, Crown } from 'lucide-react';
+import { Volume2, VolumeX, Music, HardDrive, Sparkles, Crown, Users } from 'lucide-react';
 import { PlayerStats } from '../types';
 import { PixelIcon, PixelIconName } from './PixelIcon';
 import { sound } from '../utils/sound';
@@ -8,6 +8,7 @@ interface NavbarProps {
   stats: PlayerStats;
   onOpenSaveModal: () => void;
   onOpenCheatModal?: () => void;
+  onOpenPartyModal?: () => void;
   onVersionClick?: () => void;
   activeTab: string;
   setActiveTab: (tab: string) => void;
@@ -17,6 +18,7 @@ export const Navbar: React.FC<NavbarProps> = ({
   stats, 
   onOpenSaveModal, 
   onOpenCheatModal,
+  onOpenPartyModal,
   onVersionClick,
   activeTab, 
   setActiveTab 
@@ -54,7 +56,10 @@ export const Navbar: React.FC<NavbarProps> = ({
 
   const tabs: { id: string; label: string; icon: PixelIconName; highlight?: boolean }[] = [
     { id: 'anvil', label: '모루 강화', icon: 'anvil' },
-    { id: 'dungeon', label: '던전 사냥', icon: 'dungeon' },
+    { id: 'dungeon', label: '10대 월드 던전', icon: 'dungeon' },
+    { id: 'world_boss', label: '🔥 월드 보스 토벌', icon: 'boss' as PixelIconName, highlight: true },
+    { id: 'spire', label: '⚡ 무한 검탑·보석', icon: 'trophy' as PixelIconName, highlight: true },
+    { id: 'sword_spirit', label: '🧚 검령 공방·소울', icon: 'rune' as PixelIconName, highlight: true },
     { id: 'prestige', label: `환생·차원 (${stats.rebirthCount}R/${stats.superRebirthCount}SR)`, icon: 'gold', highlight: stats.gold >= 100000 || stats.rebirthCount >= 100 },
     ...(stats.superRebirthCount >= 10 || stats.adminUnlocked
       ? [{ id: 'tier_staircase', label: '👑 티어 계단 (T1~T5)', icon: 'trophy' as PixelIconName, highlight: true }]
@@ -125,6 +130,13 @@ export const Navbar: React.FC<NavbarProps> = ({
             <span className="text-[10px] text-neutral-400 hidden md:inline">행운약</span>
           </div>
 
+          {/* Spirit Dust */}
+          <div className="flex items-center gap-1 bg-neutral-950 px-2 py-1 rounded border-2 border-pink-600/60 shadow-inner">
+            <Sparkles className="w-3.5 h-3.5 text-pink-400" />
+            <span className="text-pink-300 font-bold">{formatNum(stats.spiritDust || 0)}</span>
+            <span className="text-[10px] text-neutral-400 hidden md:inline">가루</span>
+          </div>
+
           {/* Sword Shards */}
           <div className="flex items-center gap-1 bg-neutral-950 px-2 py-1 rounded border-2 border-slate-600/60 shadow-inner">
             <PixelIcon name="shard" size={16} />
@@ -135,6 +147,20 @@ export const Navbar: React.FC<NavbarProps> = ({
 
         {/* Settings & Save & Cheat Controls */}
         <div className="flex items-center gap-1.5">
+          {onOpenPartyModal && (
+            <button
+              onClick={() => {
+                sound.playClick();
+                onOpenPartyModal();
+              }}
+              title="실시간 멀티 파티 레이드"
+              className="flex items-center gap-1 px-2.5 py-1 bg-gradient-to-r from-indigo-900 to-purple-900 hover:from-indigo-800 hover:to-purple-800 border-2 border-indigo-400 text-indigo-200 rounded font-mono text-xs cursor-pointer shadow-md transition-all active:scale-95"
+            >
+              <Users className="w-3.5 h-3.5 text-indigo-400 animate-pulse" />
+              <span className="font-bold">파티</span>
+            </button>
+          )}
+
           {isCheatActive && onOpenCheatModal && (
             <button
               onClick={() => {
