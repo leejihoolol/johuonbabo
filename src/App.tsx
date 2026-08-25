@@ -14,6 +14,7 @@ import { CheatModal } from './components/CheatModal';
 import { AdminPasswordModal } from './components/AdminPasswordModal';
 import { EndingCinematicModal } from './components/EndingCinematicModal';
 import { PartyLobbyModal } from './components/PartyLobbyModal';
+import { PartyBattleArena } from './components/PartyBattleArena';
 
 import { Achievement, ElementType, GameLog, Monster, PartyRoom, PlayerStats, Rune, StoredSword, Sword } from './types';
 import { SWORDS_DATA } from './data/swords';
@@ -1393,6 +1394,22 @@ export default function App() {
           onStartPartyCombat={handleStartPartyBattle}
           onUpdateStats={setStats}
           presetTarget={partyPresetTarget}
+        />
+      )}
+
+      {/* Real-time Party Co-op Battle Arena */}
+      {activePartyRoom && (activePartyRoom.status === 'battling' || activePartyRoom.status === 'victory') && (
+        <PartyBattleArena
+          room={activePartyRoom}
+          stats={stats}
+          currentSword={currentSword}
+          onUpdateStats={setStats}
+          onCloseArena={() => setActivePartyRoom(null)}
+          onOpenLobby={() => {
+            setActivePartyRoom(null);
+            setIsPartyModalOpen(true);
+          }}
+          addLog={addLog}
         />
       )}
 

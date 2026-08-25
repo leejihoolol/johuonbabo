@@ -11,6 +11,7 @@ import {
   orderBy,
   limit,
   addDoc,
+  runTransaction,
   serverTimestamp,
 } from 'firebase/firestore';
 import { db } from './firebase';
@@ -189,57 +190,107 @@ export async function togglePlayerReady(roomId: string, memberUid: string, isRea
 // Host Starts the Battle
 export async function startPartyBattle(roomId: string): Promise<void> {
   const roomRef = doc(db, 'parties', roomId);
+  const snap = await getDoc(roomRef);
+  if (!snap.exists()) return;
+  const room = snap.data() as PartyRoom;
+
+  // Reset totalDamage for all members at battle start
+  const members = { ...room.members };
+  Object.keys(members).forEach((uid) => {
+    members[uid] = {
+      ...members[uid],
+      totalDamage: 0,
+      currentHp: members[uid].maxHp || 1000,
+    };
+  });
+
   await updateDoc(roomRef, {
     status: 'battling',
+    bossHp: room.bossMaxHp,
     startedAt: Date.now(),
+    members,
   });
 }
 
-// Sync Party Damage & Boss HP
+// Reset Room back to Waiting Lobby for Rematch
+export async function resetPartyRoomToLobby(roomId: string): Promise<void> {
+  try {
+    const roomRef = doc(db, 'parties', roomId);
+    const snap = await getDoc(roomRef);
+    if (!snap.exists()) return;
+    const room = snap.data() as PartyRoom;
+
+    const members = { ...room.members };
+    Object.keys(members).forEach((uid) => {
+      members[uid] = {
+        ...members[uid],
+        isReady: members[uid].isHost,
+        totalDamage: 0,
+        currentHp: members[uid].maxHp || 1000,
+      };
+    });
+
+    await updateDoc(roomRef, {
+      status: 'waiting',
+      bossHp: room.bossMaxHp,
+      startedAt: null,
+      clearedAt: null,
+      members,
+    });
+  } catch (err) {
+    console.error('Error resetting party room:', err);
+  }
+}
+
+// Sync Party Damage & Boss HP with atomic runTransaction
 export async function dealPartyBossDamage(
   roomId: string,
   memberUid: string,
   damage: number,
   newPlayerHp?: number
 ): Promise<void> {
+  if (damage <= 0) return;
   try {
     const roomRef = doc(db, 'parties', roomId);
-    const snap = await getDoc(roomRef);
-    if (!snap.exists()) return;
+    await runTransaction(db, async (transaction) => {
+      const snap = await transaction.get(roomRef);
+      if (!snap.exists()) return;
 
-    const room = snap.data() as PartyRoom;
-    if (room.status !== 'battling') return;
+      const room = snap.data() as PartyRoom;
+      if (room.status !== 'battling') return;
 
-    const currentMember = room.members[memberUid];
-    if (!currentMember) return;
+      const currentMember = room.members?.[memberUid];
+      if (!currentMember) return;
 
-    const nextBossHp = Math.max(0, (room.bossHp ?? room.bossMaxHp) - damage);
-    const nextTotalDamage = (currentMember.totalDamage || 0) + damage;
-    const isVictory = nextBossHp <= 0;
+      const currentHp = room.bossHp ?? room.bossMaxHp;
+      const nextBossHp = Math.max(0, currentHp - damage);
+      const nextTotalDamage = (currentMember.totalDamage || 0) + damage;
+      const isVictory = nextBossHp <= 0;
 
-    const updatedMembers = {
-      ...room.members,
-      [memberUid]: {
-        ...currentMember,
-        totalDamage: nextTotalDamage,
-        currentHp: newPlayerHp !== undefined ? newPlayerHp : currentMember.currentHp,
-        lastActive: Date.now(),
-      },
-    };
+      const updatedMembers = {
+        ...room.members,
+        [memberUid]: {
+          ...currentMember,
+          totalDamage: nextTotalDamage,
+          currentHp: newPlayerHp !== undefined ? newPlayerHp : currentMember.currentHp,
+          lastActive: Date.now(),
+        },
+      };
 
-    const updatePayload: any = {
-      bossHp: nextBossHp,
-      members: updatedMembers,
-    };
+      const updatePayload: any = {
+        bossHp: nextBossHp,
+        members: updatedMembers,
+      };
 
-    if (isVictory) {
-      updatePayload.status = 'victory';
-      updatePayload.clearedAt = Date.now();
-    }
+      if (isVictory) {
+        updatePayload.status = 'victory';
+        updatePayload.clearedAt = Date.now();
+      }
 
-    await updateDoc(roomRef, updatePayload);
+      transaction.update(roomRef, updatePayload);
+    });
   } catch (err) {
-    console.error('Error dealing party damage:', err);
+    console.error('Error in dealPartyBossDamage transaction:', err);
   }
 }
 
