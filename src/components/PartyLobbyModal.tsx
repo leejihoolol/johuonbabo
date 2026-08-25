@@ -90,11 +90,13 @@ export const PartyLobbyModal: React.FC<PartyLobbyModalProps> = ({
   const saveProfile = (newName: string, newAvatar: string) => {
     setPlayerName(newName);
     setPlayerAvatar(newAvatar);
-    onUpdateStats((prev) => ({
-      ...prev,
-      playerName: newName,
-      playerAvatar: newAvatar,
-    }));
+    if (onUpdateStats) {
+      onUpdateStats((prev) => ({
+        ...prev,
+        playerName: newName,
+        playerAvatar: newAvatar,
+      }));
+    }
   };
 
   // Build my party member payload
@@ -143,7 +145,11 @@ export const PartyLobbyModal: React.FC<PartyLobbyModalProps> = ({
 
         // If battle started, notify parent to switch to party combat mode!
         if (room.status === 'battling') {
-          onStartPartyCombat(room);
+          if (onStartBattle) {
+            onStartBattle(room);
+          } else if (onStartPartyCombat) {
+            onStartPartyCombat(room);
+          }
         }
       },
       (err) => {
@@ -262,21 +268,42 @@ export const PartyLobbyModal: React.FC<PartyLobbyModalProps> = ({
     if (!activeRoomId || !currentRoom) return;
     const myMember = currentRoom.members[playerUid];
     if (!myMember) return;
-    await togglePlayerReady(activeRoomId, playerUid, !myMember.isReady);
+    try {
+      await togglePlayerReady(activeRoomId, playerUid, !myMember.isReady);
+      sound.playClick();
+    } catch (err: any) {
+      console.error(err);
+    }
   };
 
   // Start Battle (Host Only)
   const handleStartBattle = async () => {
     if (!activeRoomId || !currentRoom) return;
     const members = Object.values(currentRoom.members) as PartyMember[];
-    const unready = members.find((m) => !m.isReady);
+    // Find unready members (excluding host who is always ready)
+    const unready = members.find((m) => !m.isReady && !m.isHost && m.uid !== currentRoom.hostUid);
     if (unready) {
       setErrorMessage(`${unready.name}님이 아직 준비(Ready)하지 않았습니다.`);
       sound.playFail();
       return;
     }
     sound.playBossRoar();
-    await startPartyBattle(activeRoomId);
+    try {
+      await startPartyBattle(activeRoomId);
+      const updatedRoom: PartyRoom = {
+        ...currentRoom,
+        status: 'battling',
+        startedAt: Date.now(),
+      };
+      if (onStartBattle) {
+        onStartBattle(updatedRoom);
+      } else if (onStartPartyCombat) {
+        onStartPartyCombat(updatedRoom);
+      }
+    } catch (err: any) {
+      console.error('Failed to start party battle:', err);
+      setErrorMessage(err.message || '전투 시작에 실패했습니다.');
+    }
   };
 
   // Chat / Emote Send

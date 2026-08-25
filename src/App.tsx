@@ -25,6 +25,7 @@ import { SwordTowerView } from './components/SwordTowerView';
 import { SwordSpiritView } from './components/SwordSpiritView';
 import { sound } from './utils/sound';
 import { getWorldSword, calculateTotalMultipliers } from './utils/worldSwordHelper';
+import { subscribeToPartyRoom } from './utils/firebaseParty';
 
 const STORAGE_KEY = 'PIXEL_SWORD_MASTER_SAVE_V2';
 
@@ -211,6 +212,20 @@ export default function App() {
     };
     setLogs((prev) => [newLog, ...prev.slice(0, 24)]);
   };
+
+  // Real-time Firestore Active Party Room Sync
+  useEffect(() => {
+    if (!activePartyRoom?.id) return;
+    const unsub = subscribeToPartyRoom(activePartyRoom.id, (room) => {
+      if (room) {
+        setActivePartyRoom(room);
+        if (room.status === 'victory') {
+          addLog(`🎉 [파티 승리] 파티원들과 함께 ${room.targetTitle} 레이드를 완벽하게 정복했습니다! (보상 1.5배 적용)`, 'boss');
+        }
+      }
+    });
+    return () => unsub();
+  }, [activePartyRoom?.id]);
 
   // Auto-Save interval (Every 5 seconds)
   useEffect(() => {
@@ -1375,6 +1390,8 @@ export default function App() {
           isOpen={isPartyModalOpen}
           onClose={() => setIsPartyModalOpen(false)}
           onStartBattle={handleStartPartyBattle}
+          onStartPartyCombat={handleStartPartyBattle}
+          onUpdateStats={setStats}
           presetTarget={partyPresetTarget}
         />
       )}
