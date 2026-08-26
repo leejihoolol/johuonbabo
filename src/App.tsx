@@ -15,8 +15,11 @@ import { AdminPasswordModal } from './components/AdminPasswordModal';
 import { EndingCinematicModal } from './components/EndingCinematicModal';
 import { PartyLobbyModal } from './components/PartyLobbyModal';
 import { PartyBattleArena } from './components/PartyBattleArena';
+import { SpeedrunHUD } from './components/SpeedrunHUD';
+import { SpeedrunSetupModal } from './components/SpeedrunSetupModal';
+import { SpeedrunVictoryModal } from './components/SpeedrunVictoryModal';
 
-import { Achievement, ElementType, GameLog, Monster, PartyRoom, PlayerStats, Rune, StoredSword, Sword } from './types';
+import { Achievement, ElementType, GameLog, Monster, PartyRoom, PlayerStats, Rune, StoredSword, Sword, SpeedrunGoal, SpeedrunState, SpeedrunRecord } from './types';
 import { SWORDS_DATA } from './data/swords';
 import { WORLDS_DATA, TIER_STAIRCASES_DATA } from './data/worlds';
 import { INITIAL_ACHIEVEMENTS, INITIAL_RUNES } from './data/research';
@@ -188,6 +191,33 @@ export default function App() {
     setIsCheatModalOpen(true);
     addLog('[어드민] 보안 인증 성공! 최고 관리자 치트 콘솔이 영구 개방되었습니다.', 'boss');
   };
+
+  // Speedrun State
+  const [speedrunState, setSpeedrunState] = useState<SpeedrunState>({
+    isActive: false,
+    isPaused: false,
+    isCompleted: false,
+    startedAt: 0,
+    elapsedMs: 0,
+    goal: {
+      presetName: '0환생 +20강',
+      targetRebirths: null,
+      targetSuperRebirths: null,
+      targetTier: null,
+      targetEnding: false,
+      targetSwordLevel: 20,
+    },
+    splits: [],
+    startRebirthCount: 0,
+    startSuperRebirthCount: 0,
+    startSwordLevel: 0,
+    startEnhanceAttempts: 0,
+    startMode: 'clean',
+  });
+  const [isSpeedrunSetupModalOpen, setIsSpeedrunSetupModalOpen] = useState(false);
+  const [isSpeedrunVictoryModalOpen, setIsSpeedrunVictoryModalOpen] = useState(false);
+  const [speedrunFinalTimeFormatted, setSpeedrunFinalTimeFormatted] = useState('00:00:00.00');
+
   const [logs, setLogs] = useState<GameLog[]>([
     {
       id: 'init_log',
@@ -257,6 +287,173 @@ export default function App() {
 
     return () => clearInterval(mineInterval);
   }, [stats.researches, stats.rebirthStats]);
+
+  // Speedrun Goal Completion Watcher
+  useEffect(() => {
+    if (!speedrunState.isActive || speedrunState.isCompleted) return;
+
+    const { goal } = speedrunState;
+
+    const currentSwordLevel = stats.currentSwordLevel || 0;
+    const currentRebirths = stats.rebirthCount || 0;
+    const currentSuperRebirths = stats.superRebirthCount || 0;
+    const unlockedTiers = stats.unlockedTiers || [];
+
+    const rebirthGoalMet = goal.targetRebirths !== null ? currentRebirths >= goal.targetRebirths : true;
+    const superRebirthGoalMet = goal.targetSuperRebirths !== null ? currentSuperRebirths >= goal.targetSuperRebirths : true;
+    const tierGoalMet = goal.targetTier !== null ? unlockedTiers.includes(goal.targetTier) : true;
+    const swordLevelGoalMet = goal.targetSwordLevel !== null ? currentSwordLevel >= goal.targetSwordLevel : true;
+    const endingGoalMet = goal.targetEnding ? Boolean(stats.theEndCompleted || isEndingActive) : true;
+
+    const hasAnyGoal =
+      goal.targetRebirths !== null ||
+      goal.targetSuperRebirths !== null ||
+      goal.targetTier !== null ||
+      goal.targetEnding ||
+      goal.targetSwordLevel !== null;
+
+    if (hasAnyGoal && rebirthGoalMet && superRebirthGoalMet && tierGoalMet && swordLevelGoalMet && endingGoalMet) {
+      // Goal accomplished! Stop stopwatch immediately!
+      const finalElapsed =
+        speedrunState.elapsedMs + (speedrunState.isPaused ? 0 : Date.now() - speedrunState.startedAt);
+
+      const totalMs = finalElapsed;
+      const ms = Math.floor((totalMs % 1000) / 10);
+      const totalSec = Math.floor(totalMs / 1000);
+      const sec = totalSec % 60;
+      const totalMin = Math.floor(totalSec / 60);
+      const min = totalMin % 60;
+      const hrs = Math.floor(totalMin / 60);
+
+      const formatted = `${hrs.toString().padStart(2, '0')}:${min.toString().padStart(2, '0')}:${sec
+        .toString()
+        .padStart(2, '0')}.${ms.toString().padStart(2, '0')}`;
+
+      setSpeedrunFinalTimeFormatted(formatted);
+      setSpeedrunState((prev) => ({
+        ...prev,
+        isCompleted: true,
+        elapsedMs: finalElapsed,
+      }));
+
+      // Save to Record storage
+      const newRecord: SpeedrunRecord = {
+        id: `${Date.now()}_${Math.random()}`,
+        title: goal.presetName || '커스텀 목표 스피드런',
+        goal,
+        timeFormatted: formatted,
+        elapsedMs: finalElapsed,
+        clearedAt: Date.now(),
+        splits: speedrunState.splits,
+        enhanceAttempts: Math.max(0, stats.totalEnhanceAttempts - speedrunState.startEnhanceAttempts),
+        finalSwordLevel: currentSwordLevel,
+        startMode: speedrunState.startMode,
+      };
+
+      try {
+        const saved = localStorage.getItem('PIXEL_SWORD_SPEEDRUN_RECORDS');
+        const list: SpeedrunRecord[] = saved ? JSON.parse(saved) : [];
+        const updated = [newRecord, ...list];
+        localStorage.setItem('PIXEL_SWORD_SPEEDRUN_RECORDS', JSON.stringify(updated));
+      } catch {
+        // Ignored
+      }
+
+      sound.playSuccess(true);
+      setIsSpeedrunVictoryModalOpen(true);
+      addLog(`🏆 [스피드런 정복!] 설정한 목표를 ${formatted} 기록으로 달성하여 타이머가 정지되었습니다!`, 'boss');
+    }
+  }, [
+    stats.currentSwordLevel,
+    stats.rebirthCount,
+    stats.superRebirthCount,
+    stats.unlockedTiers,
+    stats.theEndCompleted,
+    isEndingActive,
+    speedrunState.isActive,
+    speedrunState.isCompleted,
+    speedrunState.goal,
+  ]);
+
+  // Speedrun Action Handlers
+  const handleStartSpeedrun = (goal: SpeedrunGoal, mode: 'clean' | 'continuous') => {
+    if (mode === 'clean') {
+      try {
+        localStorage.setItem('SPEEDRUN_CLEAN_BACKUP_SAVE', JSON.stringify(stats));
+      } catch {
+        // Ignored
+      }
+      setStats(DEFAULT_STATS);
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(DEFAULT_STATS));
+    }
+
+    setSpeedrunState({
+      isActive: true,
+      isPaused: false,
+      isCompleted: false,
+      startedAt: Date.now(),
+      elapsedMs: 0,
+      goal,
+      splits: [],
+      startRebirthCount: mode === 'clean' ? 0 : stats.rebirthCount || 0,
+      startSuperRebirthCount: mode === 'clean' ? 0 : stats.superRebirthCount || 0,
+      startSwordLevel: mode === 'clean' ? 0 : stats.currentSwordLevel || 0,
+      startEnhanceAttempts: mode === 'clean' ? 0 : stats.totalEnhanceAttempts || 0,
+      startMode: mode,
+    });
+
+    setIsSpeedrunSetupModalOpen(false);
+    addLog(`[스피드런 시작!] '${goal.presetName || '커스텀 목표'}' 챌린지가 시작되었습니다! 상단 타이머가 작동합니다.`, 'boss');
+  };
+
+  const handlePauseSpeedrun = () => {
+    setSpeedrunState((prev) => {
+      if (!prev.isActive || prev.isPaused) return prev;
+      return {
+        ...prev,
+        isPaused: true,
+        elapsedMs: prev.elapsedMs + (Date.now() - prev.startedAt),
+      };
+    });
+    addLog('[스피드런] 타이머가 일시정지되었습니다.', 'system');
+  };
+
+  const handleResumeSpeedrun = () => {
+    setSpeedrunState((prev) => {
+      if (!prev.isActive || !prev.isPaused) return prev;
+      return {
+        ...prev,
+        isPaused: false,
+        startedAt: Date.now(),
+      };
+    });
+    addLog('[스피드런] 타이머가 다시 시작되었습니다.', 'system');
+  };
+
+  const handleAbortSpeedrun = () => {
+    setSpeedrunState({
+      isActive: false,
+      isPaused: false,
+      isCompleted: false,
+      startedAt: 0,
+      elapsedMs: 0,
+      goal: {
+        presetName: '0환생 +20강',
+        targetRebirths: null,
+        targetSuperRebirths: null,
+        targetTier: null,
+        targetEnding: false,
+        targetSwordLevel: 20,
+      },
+      splits: [],
+      startRebirthCount: 0,
+      startSuperRebirthCount: 0,
+      startSwordLevel: 0,
+      startEnhanceAttempts: 0,
+      startMode: 'clean',
+    });
+    addLog('[스피드런 중단] 진행 중이던 스피드런을 종료했습니다.', 'system');
+  };
 
   // Core Enhance Logic with Guaranteed Safety Scroll Consumption & Protection
   const handleEnhance = (useQteBonus = false): { success: boolean; resultType: 'success' | 'fail' | 'destroy' | 'drop' } => {
@@ -1168,12 +1365,27 @@ export default function App() {
 
   return (
     <div className="min-h-screen bg-neutral-950 text-neutral-100 flex flex-col selection:bg-amber-500 selection:text-neutral-950">
+      {/* Real-time Floating Speedrun HUD */}
+      {speedrunState.isActive && (
+        <SpeedrunHUD
+          speedrunState={speedrunState}
+          stats={stats}
+          onPause={handlePauseSpeedrun}
+          onResume={handleResumeSpeedrun}
+          onAbort={handleAbortSpeedrun}
+          onOpenRecords={() => setIsSpeedrunSetupModalOpen(true)}
+          onOpenDetails={() => setIsSpeedrunSetupModalOpen(true)}
+        />
+      )}
+
       {/* Top Header & Resources Navigation */}
       <Navbar
         stats={stats}
         onOpenSaveModal={() => setIsSaveModalOpen(true)}
         onOpenCheatModal={() => setIsCheatModalOpen(true)}
         onOpenPartyModal={() => handleOpenPartyModal()}
+        onOpenSpeedrunModal={() => setIsSpeedrunSetupModalOpen(true)}
+        isSpeedrunActive={speedrunState.isActive}
         onVersionClick={handleVersionClick}
         activeTab={activeTab}
         setActiveTab={setActiveTab}
@@ -1426,6 +1638,30 @@ export default function App() {
           }}
         />
       )}
+
+      {/* Speedrun Setup & Records Modal */}
+      {isSpeedrunSetupModalOpen && (
+        <SpeedrunSetupModal
+          stats={stats}
+          onStartSpeedrun={handleStartSpeedrun}
+          onClose={() => setIsSpeedrunSetupModalOpen(false)}
+        />
+      )}
+
+      {/* Speedrun Goal Accomplished Victory Modal */}
+      {isSpeedrunVictoryModalOpen && (
+        <SpeedrunVictoryModal
+          speedrunState={speedrunState}
+          stats={stats}
+          finalTimeFormatted={speedrunFinalTimeFormatted}
+          onClose={() => setIsSpeedrunVictoryModalOpen(false)}
+          onRestartNewRun={() => {
+            setIsSpeedrunVictoryModalOpen(false);
+            setIsSpeedrunSetupModalOpen(true);
+          }}
+        />
+      )}
     </div>
   );
 }
+

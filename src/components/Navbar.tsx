@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Volume2, VolumeX, Music, HardDrive, Sparkles, Crown, Users } from 'lucide-react';
+import { Volume2, VolumeX, Music, HardDrive, Sparkles, Crown, Users, Timer } from 'lucide-react';
 import { PlayerStats } from '../types';
 import { PixelIcon, PixelIconName } from './PixelIcon';
 import { sound } from '../utils/sound';
@@ -9,6 +9,8 @@ interface NavbarProps {
   onOpenSaveModal: () => void;
   onOpenCheatModal?: () => void;
   onOpenPartyModal?: () => void;
+  onOpenSpeedrunModal?: () => void;
+  isSpeedrunActive?: boolean;
   onVersionClick?: () => void;
   activeTab: string;
   setActiveTab: (tab: string) => void;
@@ -19,6 +21,8 @@ export const Navbar: React.FC<NavbarProps> = ({
   onOpenSaveModal, 
   onOpenCheatModal,
   onOpenPartyModal,
+  onOpenSpeedrunModal,
+  isSpeedrunActive,
   onVersionClick,
   activeTab, 
   setActiveTab 
@@ -147,6 +151,24 @@ export const Navbar: React.FC<NavbarProps> = ({
 
         {/* Settings & Save & Cheat Controls */}
         <div className="flex items-center gap-1.5">
+          {onOpenSpeedrunModal && (
+            <button
+              onClick={() => {
+                sound.playClick();
+                onOpenSpeedrunModal();
+              }}
+              title="스피드런 모드 설정 및 도전"
+              className={`flex items-center gap-1 px-2.5 py-1 rounded font-mono text-xs cursor-pointer shadow-md transition-all active:scale-95 border-2 ${
+                isSpeedrunActive
+                  ? 'bg-gradient-to-r from-amber-500 to-yellow-400 text-neutral-950 border-amber-200 font-bold animate-pulse'
+                  : 'bg-neutral-800 hover:bg-neutral-700 text-amber-300 border-amber-500/60'
+              }`}
+            >
+              <Timer className={`w-3.5 h-3.5 ${isSpeedrunActive ? 'text-neutral-950 animate-spin' : 'text-amber-400'}`} style={{ animationDuration: '3s' }} />
+              <span className="font-bold">{isSpeedrunActive ? '스피드런 진행중' : '스피드런'}</span>
+            </button>
+          )}
+
           {onOpenPartyModal && (
             <button
               onClick={() => {

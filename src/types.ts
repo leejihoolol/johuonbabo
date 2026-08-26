@@ -398,3 +398,49 @@ export interface PartyRoom {
   clearedAt?: number;
 }
 
+// Speedrun Mode Types
+export interface SpeedrunGoal {
+  targetRebirths: number | null; // null = ignore, 0 = 0 rebirths condition, N = reach N rebirths
+  targetSuperRebirths: number | null; // null = ignore, 0 = 0 SR, N = reach N SR
+  targetTier: number | null; // null = ignore, 1~5 = reach Tier N
+  targetEnding: boolean; // true = clear THE END
+  targetSwordLevel: number | null; // null = ignore, 1~35 = reach +N level
+  presetName?: string;
+}
+
+export interface SpeedrunSplit {
+  name: string;
+  timestampMs: number;
+  details: string;
+}
+
+export interface SpeedrunState {
+  isActive: boolean;
+  isPaused: boolean;
+  isCompleted: boolean;
+  startedAt: number;
+  elapsedMs: number;
+  pausedAt?: number;
+  goal: SpeedrunGoal;
+  splits: SpeedrunSplit[];
+  startRebirthCount: number;
+  startSuperRebirthCount: number;
+  startSwordLevel: number;
+  startEnhanceAttempts: number;
+  startMode: 'clean' | 'continuous';
+}
+
+export interface SpeedrunRecord {
+  id: string;
+  title: string;
+  goal: SpeedrunGoal;
+  timeFormatted: string;
+  elapsedMs: number;
+  clearedAt: number;
+  splits: SpeedrunSplit[];
+  enhanceAttempts: number;
+  finalSwordLevel: number;
+  startMode: 'clean' | 'continuous';
+}
+
+
