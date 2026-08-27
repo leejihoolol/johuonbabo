@@ -443,4 +443,89 @@ export interface SpeedrunRecord {
   startMode: 'clean' | 'continuous';
 }
 
+// ----------------------------------------------------
+// Player-to-Player Trading & Marketplace Types
+// ----------------------------------------------------
+
+export type TradeItemType = 
+  | 'sword' 
+  | 'gold' 
+  | 'diamonds' 
+  | 'stones' 
+  | 'scrolls' 
+  | 'potions' 
+  | 'spirit_dust' 
+  | 'rune' 
+  | 'gem' 
+  | 'shards' 
+  | 'raid_tokens';
+
+export type TradePriceType = 'gold' | 'diamonds' | 'stones' | 'scrolls' | 'potions' | 'spirit_dust';
+
+export interface TradeListing {
+  id: string;
+  sellerUid: string;
+  sellerName: string;
+  sellerAvatar: string;
+  itemType: TradeItemType;
+  itemTitle: string;
+  itemAmount: number;
+  itemData?: {
+    storedSword?: StoredSword;
+    rune?: Rune;
+    socketGem?: SocketGem;
+  };
+  priceType: TradePriceType;
+  priceAmount: number;
+  status: 'active' | 'sold' | 'cancelled';
+  buyerUid?: string;
+  buyerName?: string;
+  createdAt: number;
+  soldAt?: number;
+}
+
+export interface TradeOffer {
+  gold: number;
+  diamonds: number;
+  stones: number;
+  scrolls: number;
+  potions: number;
+  spiritDust: number;
+  shards: number;
+  raidTokens: number;
+  storedSwords: StoredSword[];
+  runes: Rune[];
+  gems: SocketGem[];
+}
+
+export interface TradeRoom {
+  id: string;
+  roomCode: string;
+  hostUid: string;
+  hostName: string;
+  hostAvatar: string;
+  guestUid: string | null;
+  guestName: string | null;
+  guestAvatar: string | null;
+  status: 'waiting' | 'offering' | 'locked' | 'completed' | 'cancelled';
+  hostOffer: TradeOffer;
+  guestOffer: TradeOffer;
+  hostLocked: boolean;
+  guestLocked: boolean;
+  hostConfirmed: boolean;
+  guestConfirmed: boolean;
+  createdAt: number;
+  completedAt?: number;
+  cancelledReason?: string;
+}
+
+export interface TradeChatMessage {
+  id: string;
+  senderUid: string;
+  senderName: string;
+  text: string;
+  timestamp: number;
+  isSystem?: boolean;
+}
+
 

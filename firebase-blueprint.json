@@ -3,6 +3,7 @@
     "parties": {
       "title": "Party Rooms",
       "description": "Real-time multiplayer co-op party rooms for Dungeon, World Boss, and Infinite Spire",
+      "type": "object",
       "properties": {
         "id": { "type": "string" },
         "roomCode": { "type": "string" },
@@ -14,9 +15,53 @@
         "hostName": { "type": "string" },
         "status": { "type": "string" },
         "maxMembers": { "type": "number" },
-        "createdAt": { "type": "string" },
+        "createdAt": { "type": "number" },
         "bossHp": { "type": "number" },
         "bossMaxHp": { "type": "number" }
+      }
+    },
+    "trade_listings": {
+      "title": "Trade Listings",
+      "description": "Public marketplace listings for trading swords, currencies, consumables, runes, and gems",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "sellerUid": { "type": "string" },
+        "sellerName": { "type": "string" },
+        "sellerAvatar": { "type": "string" },
+        "itemType": { "type": "string" },
+        "itemTitle": { "type": "string" },
+        "itemAmount": { "type": "number" },
+        "itemData": { "type": "object" },
+        "priceType": { "type": "string" },
+        "priceAmount": { "type": "number" },
+        "status": { "type": "string" },
+        "buyerUid": { "type": "string" },
+        "buyerName": { "type": "string" },
+        "createdAt": { "type": "number" },
+        "soldAt": { "type": "number" }
+      }
+    },
+    "trade_rooms": {
+      "title": "P2P Trade Rooms",
+      "description": "Real-time 1:1 direct trade rooms between players",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "roomCode": { "type": "string" },
+        "hostUid": { "type": "string" },
+        "hostName": { "type": "string" },
+        "guestUid": { "type": "string" },
+        "guestName": { "type": "string" },
+        "status": { "type": "string" },
+        "hostOffer": { "type": "object" },
+        "guestOffer": { "type": "object" },
+        "hostLocked": { "type": "boolean" },
+        "guestLocked": { "type": "boolean" },
+        "hostConfirmed": { "type": "boolean" },
+        "guestConfirmed": { "type": "boolean" },
+        "createdAt": { "type": "number" },
+        "completedAt": { "type": "number" }
       }
     }
   }

@@ -62,6 +62,7 @@ export const Navbar: React.FC<NavbarProps> = ({
     { id: 'anvil', label: '모루 강화', icon: 'anvil' },
     { id: 'dungeon', label: '10대 월드 던전', icon: 'dungeon' },
     { id: 'world_boss', label: '🔥 월드 보스 토벌', icon: 'boss' as PixelIconName, highlight: true },
+    { id: 'trade', label: '🤝 자유 거래소·직거래', icon: 'shop' as PixelIconName, highlight: true },
     { id: 'spire', label: '⚡ 무한 검탑·보석', icon: 'trophy' as PixelIconName, highlight: true },
     { id: 'sword_spirit', label: '🧚 검령 공방·소울', icon: 'rune' as PixelIconName, highlight: true },
     { id: 'prestige', label: `환생·차원 (${stats.rebirthCount}R/${stats.superRebirthCount}SR)`, icon: 'gold', highlight: stats.gold >= 100000 || stats.rebirthCount >= 100 },

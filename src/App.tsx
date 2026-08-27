@@ -27,6 +27,7 @@ import { COSMIC_RELICS_DATA, INITIAL_SWORD_SPIRITS } from './data/contentsData';
 import { WorldBossView } from './components/WorldBossView';
 import { SwordTowerView } from './components/SwordTowerView';
 import { SwordSpiritView } from './components/SwordSpiritView';
+import { TradeMarketView } from './components/TradeMarketView';
 import { sound } from './utils/sound';
 import { getWorldSword, calculateTotalMultipliers } from './utils/worldSwordHelper';
 import { subscribeToPartyRoom } from './utils/firebaseParty';
@@ -1435,6 +1436,16 @@ export default function App() {
             addLog={addLog}
             onOpenPartyModal={handleOpenPartyModal}
             activePartyRoom={activePartyRoom}
+          />
+        )}
+
+        {activeTab === 'trade' && (
+          <TradeMarketView
+            stats={stats}
+            currentSword={currentSword}
+            onUpdateStats={setStats}
+            addLog={addLog}
+            onOpenVaultTab={() => setActiveTab('prestige')}
           />
         )}
 
