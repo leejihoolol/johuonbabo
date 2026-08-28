@@ -12,6 +12,7 @@ interface PrestigeViewProps {
   onRebirth: () => void;
   onSuperRebirth: () => void;
   onUpgradeRebirthStat: (statKey: string, cost: number) => void;
+  onMultiRebirthWithRP?: (count: number) => void;
   onSwitchWorld: (worldId: number) => void;
   onStoreSwordInVault: (sword: Sword) => void;
   onRemoveSwordFromVault: (id: string) => void;
@@ -23,6 +24,7 @@ export const PrestigeView: React.FC<PrestigeViewProps> = ({
   onRebirth,
   onSuperRebirth,
   onUpgradeRebirthStat,
+  onMultiRebirthWithRP,
   onSwitchWorld,
   onStoreSwordInVault,
   onRemoveSwordFromVault,
@@ -273,12 +275,112 @@ export const PrestigeView: React.FC<PrestigeViewProps> = ({
                   <Lock className="w-8 h-8 text-neutral-600" />
                   <p className="text-xs font-mono">
                     일반 환생을 <strong>10회</strong> 이상 달성하면 환생 포인트를 획득하고<br />
-                    영구 스탯을 강화할 수 있는 연구소가 개방됩니다. (현재: {stats.rebirthCount}/10회)
+                    영구 스탯 강화 및 <strong>RP 즉시 다중 환생</strong> 기능이 개방됩니다. (현재: {stats.rebirthCount}/10회)
                   </p>
                 </div>
               ) : (
-                <div className="flex flex-col gap-2.5">
-                  {rebirthStatList.map((stat) => {
+                <div className="flex flex-col gap-3">
+                  {/* RP Instant Multi-Rebirth Panel */}
+                  <div className="bg-gradient-to-r from-cyan-950/60 via-indigo-950/40 to-neutral-950 border-2 border-cyan-500/80 rounded-lg p-3.5 flex flex-col gap-2.5 shadow-lg">
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-2">
+                        <span className="text-lg">⚡</span>
+                        <div>
+                          <h4 className="text-xs sm:text-sm font-bold text-cyan-300">
+                            환생 포인트(RP)로 즉시 다중 환생 (Multi-Rebirth)
+                          </h4>
+                          <p className="text-[11px] text-neutral-300 font-sans">
+                            골드/검 레벨 <strong>리셋 없이</strong> 보유 RP를 소모하여 환생 횟수와 골드 배수를 대량으로 즉시 축적합니다!
+                          </p>
+                        </div>
+                      </div>
+                      <span className="text-xs font-mono text-cyan-300 bg-cyan-950 px-2.5 py-1 rounded border border-cyan-700">
+                        보유 {stats.rebirthPoints} RP
+                      </span>
+                    </div>
+
+                    <div className="grid grid-cols-2 sm:grid-cols-5 gap-2 pt-1">
+                      <button
+                        onClick={() => {
+                          if (stats.rebirthPoints < 1) {
+                            sound.playFail();
+                            return;
+                          }
+                          sound.playSuccess(true);
+                          onMultiRebirthWithRP?.(1);
+                        }}
+                        disabled={stats.rebirthPoints < 1}
+                        className="py-2 px-2 bg-cyan-700 hover:bg-cyan-600 disabled:opacity-40 text-neutral-950 font-bold rounded text-xs font-mono border border-cyan-300 shadow cursor-pointer transition-all active:scale-95 text-center"
+                      >
+                        +1회 (1 RP)
+                      </button>
+
+                      <button
+                        onClick={() => {
+                          if (stats.rebirthPoints < 10) {
+                            sound.playFail();
+                            return;
+                          }
+                          sound.playSuccess(true);
+                          onMultiRebirthWithRP?.(10);
+                        }}
+                        disabled={stats.rebirthPoints < 10}
+                        className="py-2 px-2 bg-indigo-700 hover:bg-indigo-600 disabled:opacity-40 text-white font-bold rounded text-xs font-mono border border-indigo-400 shadow cursor-pointer transition-all active:scale-95 text-center"
+                      >
+                        +10회 (10 RP)
+                      </button>
+
+                      <button
+                        onClick={() => {
+                          if (stats.rebirthPoints < 50) {
+                            sound.playFail();
+                            return;
+                          }
+                          sound.playSuccess(true);
+                          onMultiRebirthWithRP?.(50);
+                        }}
+                        disabled={stats.rebirthPoints < 50}
+                        className="py-2 px-2 bg-purple-700 hover:bg-purple-600 disabled:opacity-40 text-white font-bold rounded text-xs font-mono border border-purple-400 shadow cursor-pointer transition-all active:scale-95 text-center"
+                      >
+                        +50회 (50 RP)
+                      </button>
+
+                      <button
+                        onClick={() => {
+                          if (stats.rebirthPoints < 100) {
+                            sound.playFail();
+                            return;
+                          }
+                          sound.playSuccess(true);
+                          onMultiRebirthWithRP?.(100);
+                        }}
+                        disabled={stats.rebirthPoints < 100}
+                        className="py-2 px-2 bg-amber-600 hover:bg-amber-500 disabled:opacity-40 text-neutral-950 font-bold rounded text-xs font-mono border border-amber-300 shadow cursor-pointer transition-all active:scale-95 text-center"
+                      >
+                        +100회 (100 RP)
+                      </button>
+
+                      <button
+                        onClick={() => {
+                          if (stats.rebirthPoints <= 0) {
+                            sound.playFail();
+                            return;
+                          }
+                          sound.playSuccess(true);
+                          onMultiRebirthWithRP?.(stats.rebirthPoints);
+                        }}
+                        disabled={stats.rebirthPoints <= 0}
+                        className="col-span-2 sm:col-span-1 py-2 px-2 bg-gradient-to-r from-emerald-500 to-teal-400 hover:from-emerald-400 hover:to-teal-300 disabled:opacity-40 text-neutral-950 font-bold rounded text-xs font-mono border border-emerald-200 shadow cursor-pointer transition-all active:scale-95 text-center animate-pulse"
+                      >
+                        MAX (전부 환생)
+                      </button>
+                    </div>
+                  </div>
+
+                  {/* Rebirth Stat List */}
+                  <div className="flex flex-col gap-2">
+                    <span className="text-xs font-bold text-neutral-300">영구 스탯 강화 항목:</span>
+                    {rebirthStatList.map((stat) => {
                     const isMax = stat.maxLvl && stat.currentLvl >= stat.maxLvl;
                     const canAfford = stats.rebirthPoints >= stat.cost;
 
@@ -315,6 +417,7 @@ export const PrestigeView: React.FC<PrestigeViewProps> = ({
                       </div>
                     );
                   })}
+                  </div>
                 </div>
               )}
             </div>

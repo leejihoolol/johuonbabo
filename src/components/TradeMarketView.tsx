@@ -986,6 +986,24 @@ export const TradeMarketView: React.FC<TradeMarketViewProps> = ({
                 <PixelIcon name="rune" size={14} />
                 <span>룬·소켓 보석</span>
               </button>
+              <button
+                onClick={() => setCategoryFilter('rebirth')}
+                className={`px-3 py-1.5 rounded border transition-colors flex items-center gap-1 cursor-pointer ${
+                  categoryFilter === 'rebirth' ? 'bg-gradient-to-r from-purple-600 to-indigo-600 text-white font-bold border-purple-300 shadow' : 'bg-neutral-950 text-purple-400 border-neutral-800'
+                }`}
+              >
+                <span>🔄</span>
+                <span>환생·초환·RP</span>
+              </button>
+              <button
+                onClick={() => setCategoryFilter('cheat')}
+                className={`px-3 py-1.5 rounded border transition-colors flex items-center gap-1 cursor-pointer ${
+                  categoryFilter === 'cheat' ? 'bg-gradient-to-r from-rose-500 to-amber-500 text-neutral-950 font-bold border-amber-300 shadow animate-pulse' : 'bg-neutral-950 text-amber-400 border-neutral-800'
+                }`}
+              >
+                <span>👑</span>
+                <span>어드민 치트 증서</span>
+              </button>
             </div>
 
             {/* Search Input & Price Sorter */}
@@ -1061,17 +1079,63 @@ export const TradeMarketView: React.FC<TradeMarketViewProps> = ({
 
                     {/* Item Body */}
                     <div className="bg-neutral-950 p-3 rounded-lg border border-neutral-800/80 flex items-center gap-3">
-                      <div className="p-2.5 bg-neutral-900 rounded border border-neutral-700 shrink-0">
-                        <PixelIcon name={getItemIcon(listing.itemType)} size={28} />
+                      <div className={`p-2.5 rounded border shrink-0 ${
+                        listing.itemType === 'cheat_menu_pass'
+                          ? 'bg-gradient-to-br from-amber-950 to-rose-950 border-amber-400 text-amber-300'
+                          : listing.itemType === 'super_rebirth'
+                          ? 'bg-purple-950 border-purple-400 text-purple-300'
+                          : listing.itemType === 'rebirth'
+                          ? 'bg-indigo-950 border-indigo-400 text-indigo-300'
+                          : listing.itemType === 'rebirth_points'
+                          ? 'bg-cyan-950 border-cyan-400 text-cyan-300'
+                          : 'bg-neutral-900 border-neutral-700'
+                      }`}>
+                        {listing.itemType === 'cheat_menu_pass' ? (
+                          <span className="text-2xl">👑</span>
+                        ) : listing.itemType === 'super_rebirth' ? (
+                          <span className="text-2xl">⚡</span>
+                        ) : listing.itemType === 'rebirth' ? (
+                          <span className="text-2xl">🔄</span>
+                        ) : listing.itemType === 'rebirth_points' ? (
+                          <span className="text-2xl">🔮</span>
+                        ) : (
+                          <PixelIcon name={getItemIcon(listing.itemType)} size={28} />
+                        )}
                       </div>
                       <div className="flex flex-col gap-0.5 overflow-hidden">
-                        <span className="text-xs sm:text-sm font-bold text-amber-300 truncate">
+                        <span className={`text-xs sm:text-sm font-bold truncate ${
+                          listing.itemType === 'cheat_menu_pass'
+                            ? 'text-amber-300 animate-pulse'
+                            : listing.itemType === 'super_rebirth'
+                            ? 'text-purple-300'
+                            : listing.itemType === 'rebirth'
+                            ? 'text-indigo-300'
+                            : listing.itemType === 'rebirth_points'
+                            ? 'text-cyan-300'
+                            : 'text-amber-300'
+                        }`}>
                           {listing.itemTitle}
                         </span>
                         {isSword && swordData ? (
                           <div className="text-[11px] text-neutral-400 font-mono">
                             <span className="text-cyan-300">W{swordData.worldId}</span> • {swordData.rarity} 등급 • 공격력 +{swordData.atkBonus}% • 골드 +{swordData.goldBonus}%
                           </div>
+                        ) : listing.itemType === 'cheat_menu_pass' ? (
+                          <span className="text-[11px] text-rose-400 font-mono font-bold">
+                            치트 콘솔 영구 개방 + 100% 강화 성공 모드 부여
+                          </span>
+                        ) : listing.itemType === 'super_rebirth' ? (
+                          <span className="text-[11px] text-purple-400 font-mono font-bold">
+                            초환생 +{listing.itemAmount}회 즉시 지급 (전스탯 x3배)
+                          </span>
+                        ) : listing.itemType === 'rebirth' ? (
+                          <span className="text-[11px] text-indigo-400 font-mono font-bold">
+                            환생 +{listing.itemAmount}회 즉시 지급 (골드 배수 +100%)
+                          </span>
+                        ) : listing.itemType === 'rebirth_points' ? (
+                          <span className="text-[11px] text-cyan-400 font-mono font-bold">
+                            환생 포인트 +{listing.itemAmount.toLocaleString()} RP 즉시 충전
+                          </span>
                         ) : (
                           <span className="text-[11px] text-neutral-400 font-mono">
                             수량: <strong className="text-neutral-200">{listing.itemAmount.toLocaleString()}</strong>개

@@ -98,20 +98,31 @@ export async function createMarketListing(params: {
   return listingRef.id;
 }
 
-// Subscribe to Active Marketplace Listings
+// Subscribe to Active Marketplace Listings (Real User Items Only)
 export function subscribeToMarketListings(
   onUpdate: (listings: TradeListing[]) => void,
   onError?: (err: Error) => void
 ) {
   const listingsColl = collection(db, 'trade_listings');
   const q = query(listingsColl, where('status', '==', 'active'), limit(50));
+
+  // Purge any legacy bot listings immediately
+  purgeBotListings();
+
   return onSnapshot(
     q,
     (snap) => {
       const list: TradeListing[] = [];
       snap.forEach((d) => {
-        list.push({ id: d.id, ...d.data() } as TradeListing);
+        const data = d.data() as TradeListing;
+        // Ignore any bot listings
+        if (data.sellerUid && data.sellerUid.startsWith('bot_')) {
+          deleteDoc(doc(db, 'trade_listings', d.id)).catch(() => {});
+          return;
+        }
+        list.push({ id: d.id, ...data });
       });
+
       // Sort in memory by createdAt desc
       list.sort((a, b) => (b.createdAt || 0) - (a.createdAt || 0));
       onUpdate(list);
@@ -121,6 +132,26 @@ export function subscribeToMarketListings(
       if (onError) onError(err);
     }
   );
+}
+
+// Purge any bot seed listings from Firestore
+export async function purgeBotListings(): Promise<void> {
+  try {
+    const listingsColl = collection(db, 'trade_listings');
+    const snap = await getDocs(listingsColl);
+    const botDeletions: Promise<void>[] = [];
+    snap.forEach((d) => {
+      const data = d.data();
+      if (data.sellerUid && (data.sellerUid.startsWith('bot_') || data.sellerUid.startsWith('bot_seller_'))) {
+        botDeletions.push(deleteDoc(doc(db, 'trade_listings', d.id)));
+      }
+    });
+    if (botDeletions.length > 0) {
+      await Promise.all(botDeletions);
+    }
+  } catch (e) {
+    console.warn('Purge bot listings error:', e);
+  }
 }
 
 // Subscribe to My Listings (both active and sold)

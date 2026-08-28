@@ -826,6 +826,26 @@ export default function App() {
     }));
   };
 
+  // Multi-Rebirth using Rebirth Points (RP) without resetting gold or sword!
+  const handleMultiRebirthWithRP = (count: number) => {
+    if (count <= 0 || (stats.rebirthPoints || 0) < count) return;
+
+    sound.playSuccess(true);
+    const newRebirthCount = (stats.rebirthCount || 0) + count;
+    const remainingRP = (stats.rebirthPoints || 0) - count;
+
+    addLog(
+      `[RP 환생 완료] 환생 포인트 ${count} RP를 사용하여 ${count}회 즉시 환생! (현재 환생: ${newRebirthCount}회, 영구 골드 획득 배수 누적!)`,
+      'boss'
+    );
+
+    setStats((prev) => ({
+      ...prev,
+      rebirthCount: newRebirthCount,
+      rebirthPoints: remainingRP,
+    }));
+  };
+
   // Super Rebirth Handler (Unlocked at 100 Rebirths)
   const handleSuperRebirth = () => {
     if ((stats.rebirthCount || 0) < 100) return;
@@ -1386,6 +1406,7 @@ export default function App() {
           onOpenCheatModal={() => setIsCheatModalOpen(true)}
           onOpenPartyModal={() => handleOpenPartyModal()}
           onOpenSpeedrunModal={() => setIsSpeedrunSetupModalOpen(true)}
+          onQuickRebirth={handleRebirth}
           isSpeedrunActive={speedrunState.isActive}
           onVersionClick={handleVersionClick}
           activeTab={activeTab}
@@ -1477,6 +1498,7 @@ export default function App() {
             onRebirth={handleRebirth}
             onSuperRebirth={handleSuperRebirth}
             onUpgradeRebirthStat={handleUpgradeRebirthStat}
+            onMultiRebirthWithRP={handleMultiRebirthWithRP}
             onSwitchWorld={handleSwitchWorld}
             onStoreSwordInVault={handleStoreSwordInVault}
             onRemoveSwordFromVault={handleRemoveSwordFromVault}

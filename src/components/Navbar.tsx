@@ -10,6 +10,7 @@ interface NavbarProps {
   onOpenCheatModal?: () => void;
   onOpenPartyModal?: () => void;
   onOpenSpeedrunModal?: () => void;
+  onQuickRebirth?: () => void;
   isSpeedrunActive?: boolean;
   onVersionClick?: () => void;
   activeTab: string;
@@ -22,6 +23,7 @@ export const Navbar: React.FC<NavbarProps> = ({
   onOpenCheatModal,
   onOpenPartyModal,
   onOpenSpeedrunModal,
+  onQuickRebirth,
   isSpeedrunActive,
   onVersionClick,
   activeTab, 
@@ -152,6 +154,30 @@ export const Navbar: React.FC<NavbarProps> = ({
 
         {/* Settings & Save & Cheat Controls */}
         <div className="flex items-center gap-1.5">
+          {/* Quick Rebirth Button for Rebirth 10+ players */}
+          {(stats.rebirthCount >= 10 || (stats.superRebirthCount || 0) > 0) && onQuickRebirth && (
+            <button
+              onClick={() => {
+                if (stats.gold < 100000) {
+                  sound.playFail();
+                  return;
+                }
+                sound.playSuccess(true);
+                onQuickRebirth();
+              }}
+              disabled={stats.gold < 100000}
+              title={stats.gold >= 100000 ? "클릭 시 즉시 100,000G를 소모하여 빠른 환생을 실행합니다 (+1 환생/RP 획득)" : "빠른 환생 불가: 100,000G가 필요합니다"}
+              className={`flex items-center gap-1 px-2.5 py-1 rounded font-mono text-xs cursor-pointer shadow-md transition-all active:scale-95 border-2 ${
+                stats.gold >= 100000
+                  ? 'bg-gradient-to-r from-emerald-500 via-teal-400 to-emerald-500 text-neutral-950 border-emerald-300 font-bold animate-pulse shadow-emerald-900/50'
+                  : 'bg-neutral-900 text-neutral-500 border-neutral-800 opacity-60 cursor-not-allowed'
+              }`}
+            >
+              <Sparkles className={`w-3.5 h-3.5 ${stats.gold >= 100000 ? 'text-neutral-950 animate-bounce' : 'text-neutral-600'}`} />
+              <span>⚡ 빠른 환생</span>
+            </button>
+          )}
+
           {onOpenSpeedrunModal && (
             <button
               onClick={() => {
