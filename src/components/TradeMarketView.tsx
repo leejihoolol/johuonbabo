@@ -68,7 +68,7 @@ export const TradeMarketView: React.FC<TradeMarketViewProps> = ({
   const [marketListings, setMarketListings] = useState<TradeListing[]>([]);
   const [myListings, setMyListings] = useState<TradeListing[]>([]);
   const [searchQuery, setSearchQuery] = useState('');
-  const [categoryFilter, setCategoryFilter] = useState<'all' | 'sword' | 'currency' | 'consumable' | 'rune_gem'>('all');
+  const [categoryFilter, setCategoryFilter] = useState<'all' | 'sword' | 'currency' | 'consumable' | 'rune_gem' | 'rebirth' | 'cheat'>('all');
   const [priceSort, setPriceSort] = useState<'newest' | 'price_asc' | 'price_desc'>('newest');
   const [isBuying, setIsBuying] = useState<string | null>(null);
   const [marketSuccessMsg, setMarketSuccessMsg] = useState<string | null>(null);
@@ -177,6 +177,9 @@ export const TradeMarketView: React.FC<TradeMarketViewProps> = ({
       let updatedDust = Math.max(0, (prev.spiritDust || 0) - (whatIGive.spiritDust || 0));
       let updatedShards = Math.max(0, (prev.swordShards || 0) - (whatIGive.shards || 0));
       let updatedRaidTokens = Math.max(0, (prev.worldBossRaidTokens || 0) - (whatIGive.raidTokens || 0));
+      let updatedRebirths = Math.max(0, (prev.rebirthCount || 0) - (whatIGive.rebirths || 0));
+      let updatedSuperRebirths = Math.max(0, (prev.superRebirthCount || 0) - (whatIGive.superRebirths || 0));
+      let updatedRebirthPoints = Math.max(0, (prev.rebirthPoints || 0) - (whatIGive.rebirthPoints || 0));
 
       const givenSwordIds = new Set(whatIGive.storedSwords.map((s) => s.id));
       const givenRuneIds = new Set(whatIGive.runes.map((r) => r.id));
@@ -195,6 +198,21 @@ export const TradeMarketView: React.FC<TradeMarketViewProps> = ({
       updatedDust += (whatIReceive.spiritDust || 0);
       updatedShards += (whatIReceive.shards || 0);
       updatedRaidTokens += (whatIReceive.raidTokens || 0);
+      updatedRebirths += (whatIReceive.rebirths || 0);
+      updatedSuperRebirths += (whatIReceive.superRebirths || 0);
+      updatedRebirthPoints += (whatIReceive.rebirthPoints || 0);
+
+      let uAdmin = prev.adminUnlocked;
+      let uCheat = prev.cheatUnlocked;
+      let uCheatSuccess = prev.cheatSuccessRate100;
+      let uCheatDmg = prev.cheatDmg1000x;
+
+      if (whatIReceive.cheatPass) {
+        uAdmin = true;
+        uCheat = true;
+        uCheatSuccess = true;
+        uCheatDmg = true;
+      }
 
       const receivedSwords = whatIReceive.storedSwords.map((s) => ({
         ...s,
@@ -222,6 +240,13 @@ export const TradeMarketView: React.FC<TradeMarketViewProps> = ({
         spiritDust: updatedDust,
         swordShards: updatedShards,
         worldBossRaidTokens: updatedRaidTokens,
+        rebirthCount: updatedRebirths,
+        superRebirthCount: updatedSuperRebirths,
+        rebirthPoints: updatedRebirthPoints,
+        adminUnlocked: uAdmin,
+        cheatUnlocked: uCheat,
+        cheatSuccessRate100: uCheatSuccess,
+        cheatDmg1000x: uCheatDmg,
         swordVault: [...updatedVault, ...receivedSwords],
         inventoryRunes: [...updatedRunes, ...receivedRunes],
         socketGems: [...updatedGems, ...receivedGems],
@@ -243,6 +268,8 @@ export const TradeMarketView: React.FC<TradeMarketViewProps> = ({
     if (categoryFilter === 'currency' && !['gold', 'diamonds', 'stones'].includes(l.itemType)) return false;
     if (categoryFilter === 'consumable' && !['scrolls', 'potions', 'spirit_dust', 'shards', 'raid_tokens'].includes(l.itemType)) return false;
     if (categoryFilter === 'rune_gem' && !['rune', 'gem'].includes(l.itemType)) return false;
+    if (categoryFilter === 'rebirth' && !['rebirth', 'super_rebirth', 'rebirth_points'].includes(l.itemType)) return false;
+    if (categoryFilter === 'cheat' && l.itemType !== 'cheat_menu_pass') return false;
 
     if (searchQuery.trim()) {
       const q = searchQuery.toLowerCase();
@@ -283,6 +310,15 @@ export const TradeMarketView: React.FC<TradeMarketViewProps> = ({
     } else if (listing.priceType === 'spirit_dust') {
       canAfford = (stats.spiritDust || 0) >= listing.priceAmount;
       priceCurName = '소울 가루';
+    } else if (listing.priceType === 'rebirth') {
+      canAfford = (stats.rebirthCount || 0) >= listing.priceAmount;
+      priceCurName = '환생 횟수';
+    } else if (listing.priceType === 'super_rebirth') {
+      canAfford = (stats.superRebirthCount || 0) >= listing.priceAmount;
+      priceCurName = '초환생 횟수';
+    } else if (listing.priceType === 'rebirth_points') {
+      canAfford = (stats.rebirthPoints || 0) >= listing.priceAmount;
+      priceCurName = '환생 포인트 (RP)';
     }
 
     if (!canAfford) {
@@ -310,6 +346,13 @@ export const TradeMarketView: React.FC<TradeMarketViewProps> = ({
         let uDust = prev.spiritDust || 0;
         let uShards = prev.swordShards || 0;
         let uRaidTokens = prev.worldBossRaidTokens || 0;
+        let uRebirth = prev.rebirthCount || 0;
+        let uSuperRebirth = prev.superRebirthCount || 0;
+        let uRP = prev.rebirthPoints || 0;
+        let uAdmin = prev.adminUnlocked;
+        let uCheat = prev.cheatUnlocked;
+        let uCheatSuccess = prev.cheatSuccessRate100;
+        let uCheatDmg = prev.cheatDmg1000x;
         let uVault = [...(prev.swordVault || [])];
         let uRunes = [...(prev.inventoryRunes || [])];
         let uGems = [...(prev.socketGems || [])];
@@ -321,6 +364,9 @@ export const TradeMarketView: React.FC<TradeMarketViewProps> = ({
         if (listing.priceType === 'scrolls') uScrolls -= listing.priceAmount;
         if (listing.priceType === 'potions') uPotions -= listing.priceAmount;
         if (listing.priceType === 'spirit_dust') uDust -= listing.priceAmount;
+        if (listing.priceType === 'rebirth') uRebirth -= listing.priceAmount;
+        if (listing.priceType === 'super_rebirth') uSuperRebirth -= listing.priceAmount;
+        if (listing.priceType === 'rebirth_points') uRP -= listing.priceAmount;
 
         // Grant item
         if (listing.itemType === 'gold') uGold += listing.itemAmount;
@@ -331,6 +377,19 @@ export const TradeMarketView: React.FC<TradeMarketViewProps> = ({
         else if (listing.itemType === 'spirit_dust') uDust += listing.itemAmount;
         else if (listing.itemType === 'shards') uShards += listing.itemAmount;
         else if (listing.itemType === 'raid_tokens') uRaidTokens += listing.itemAmount;
+        else if (listing.itemType === 'rebirth') uRebirth += listing.itemAmount;
+        else if (listing.itemType === 'super_rebirth') uSuperRebirth += listing.itemAmount;
+        else if (listing.itemType === 'rebirth_points') uRP += listing.itemAmount;
+        else if (listing.itemType === 'cheat_menu_pass') {
+          uAdmin = true;
+          uCheat = true;
+          uCheatSuccess = true;
+          uCheatDmg = true;
+          uRebirth += 100;
+          uSuperRebirth += 10;
+          uDia += 1_000_000;
+          uScrolls += 100;
+        }
         else if (listing.itemType === 'sword' && listing.itemData?.storedSword) {
           uVault.push({
             ...listing.itemData.storedSword,
@@ -359,6 +418,13 @@ export const TradeMarketView: React.FC<TradeMarketViewProps> = ({
           spiritDust: uDust,
           swordShards: uShards,
           worldBossRaidTokens: uRaidTokens,
+          rebirthCount: uRebirth,
+          superRebirthCount: uSuperRebirth,
+          rebirthPoints: uRP,
+          adminUnlocked: uAdmin,
+          cheatUnlocked: uCheat,
+          cheatSuccessRate100: uCheatSuccess,
+          cheatDmg1000x: uCheatDmg,
           swordVault: uVault,
           inventoryRunes: uRunes,
           socketGems: uGems,
@@ -392,6 +458,9 @@ export const TradeMarketView: React.FC<TradeMarketViewProps> = ({
         let uDust = prev.spiritDust || 0;
         let uShards = prev.swordShards || 0;
         let uRaidTokens = prev.worldBossRaidTokens || 0;
+        let uRebirth = prev.rebirthCount || 0;
+        let uSuperRebirth = prev.superRebirthCount || 0;
+        let uRP = prev.rebirthPoints || 0;
         let uVault = [...(prev.swordVault || [])];
         let uRunes = [...(prev.inventoryRunes || [])];
         let uGems = [...(prev.socketGems || [])];
@@ -404,6 +473,9 @@ export const TradeMarketView: React.FC<TradeMarketViewProps> = ({
         else if (listing.itemType === 'spirit_dust') uDust += listing.itemAmount;
         else if (listing.itemType === 'shards') uShards += listing.itemAmount;
         else if (listing.itemType === 'raid_tokens') uRaidTokens += listing.itemAmount;
+        else if (listing.itemType === 'rebirth') uRebirth += listing.itemAmount;
+        else if (listing.itemType === 'super_rebirth') uSuperRebirth += listing.itemAmount;
+        else if (listing.itemType === 'rebirth_points') uRP += listing.itemAmount;
         else if (listing.itemType === 'sword' && listing.itemData?.storedSword) {
           uVault.push(listing.itemData.storedSword);
         } else if (listing.itemType === 'rune' && listing.itemData?.rune) {
@@ -422,6 +494,9 @@ export const TradeMarketView: React.FC<TradeMarketViewProps> = ({
           spiritDust: uDust,
           swordShards: uShards,
           worldBossRaidTokens: uRaidTokens,
+          rebirthCount: uRebirth,
+          superRebirthCount: uSuperRebirth,
+          rebirthPoints: uRP,
           swordVault: uVault,
           inventoryRunes: uRunes,
           socketGems: uGems,
@@ -445,6 +520,9 @@ export const TradeMarketView: React.FC<TradeMarketViewProps> = ({
         let uScrolls = prev.ancientScrolls;
         let uPotions = prev.luckyPotions;
         let uDust = prev.spiritDust || 0;
+        let uRebirth = prev.rebirthCount || 0;
+        let uSuperRebirth = prev.superRebirthCount || 0;
+        let uRP = prev.rebirthPoints || 0;
 
         if (listing.priceType === 'gold') uGold += listing.priceAmount;
         if (listing.priceType === 'diamonds') uDia += listing.priceAmount;
@@ -452,6 +530,9 @@ export const TradeMarketView: React.FC<TradeMarketViewProps> = ({
         if (listing.priceType === 'scrolls') uScrolls += listing.priceAmount;
         if (listing.priceType === 'potions') uPotions += listing.priceAmount;
         if (listing.priceType === 'spirit_dust') uDust += listing.priceAmount;
+        if (listing.priceType === 'rebirth') uRebirth += listing.priceAmount;
+        if (listing.priceType === 'super_rebirth') uSuperRebirth += listing.priceAmount;
+        if (listing.priceType === 'rebirth_points') uRP += listing.priceAmount;
 
         return {
           ...prev,
@@ -461,6 +542,9 @@ export const TradeMarketView: React.FC<TradeMarketViewProps> = ({
           ancientScrolls: uScrolls,
           luckyPotions: uPotions,
           spiritDust: uDust,
+          rebirthCount: uRebirth,
+          superRebirthCount: uSuperRebirth,
+          rebirthPoints: uRP,
         };
       });
 
@@ -529,6 +613,23 @@ export const TradeMarketView: React.FC<TradeMarketViewProps> = ({
         ...prev,
         socketGems: (prev.socketGems || []).filter((g) => g.id !== gem.id),
       }));
+    } else if (regItemCategory === 'rebirth') {
+      if ((stats.rebirthCount || 0) < regAmount && !stats.adminUnlocked) { alert('보유 환생 횟수가 부족합니다.'); return; }
+      itemTitle = `${regAmount.toLocaleString()}회 환생 횟수 (🔄)`;
+      onUpdateStats((prev) => ({ ...prev, rebirthCount: Math.max(0, (prev.rebirthCount || 0) - regAmount) }));
+    } else if (regItemCategory === 'super_rebirth') {
+      if ((stats.superRebirthCount || 0) < regAmount && !stats.adminUnlocked) { alert('보유 초환생 횟수가 부족합니다.'); return; }
+      itemTitle = `${regAmount.toLocaleString()}회 초환생 횟수 (👑)`;
+      onUpdateStats((prev) => ({ ...prev, superRebirthCount: Math.max(0, (prev.superRebirthCount || 0) - regAmount) }));
+    } else if (regItemCategory === 'rebirth_points') {
+      if ((stats.rebirthPoints || 0) < regAmount && !stats.adminUnlocked) { alert('보유 환생 포인트가 부족합니다.'); return; }
+      itemTitle = `${regAmount.toLocaleString()} RP 환생 포인트 (⚡)`;
+      onUpdateStats((prev) => ({ ...prev, rebirthPoints: Math.max(0, (prev.rebirthPoints || 0) - regAmount) }));
+    } else if (regItemCategory === 'cheat_menu_pass') {
+      if (!stats.adminUnlocked && !stats.cheatUnlocked) { alert('어드민 또는 치트 권한자만 치트 메뉴 증서를 등록할 수 있습니다.'); return; }
+      itemTitle = `👑 [창조주] 어드민 치트 메뉴 권한 패스 증서`;
+      itemAmount = 1;
+      itemData = { isCheatPass: true };
     } else {
       // Currencies / Consumables
       if (regItemCategory === 'gold') {
@@ -712,6 +813,10 @@ export const TradeMarketView: React.FC<TradeMarketViewProps> = ({
       case 'gem': return 'diamond';
       case 'shards': return 'shard';
       case 'raid_tokens': return 'trophy';
+      case 'rebirth': return 'sparkle';
+      case 'super_rebirth': return 'trophy';
+      case 'rebirth_points': return 'stone';
+      case 'cheat_menu_pass': return 'sword';
       default: return 'sword';
     }
   };
@@ -725,6 +830,10 @@ export const TradeMarketView: React.FC<TradeMarketViewProps> = ({
       case 'scrolls': return { color: 'text-emerald-400', label: '보호서 (📜)', icon: 'scroll' as PixelIconName };
       case 'potions': return { color: 'text-rose-400', label: '행운약 (🧪)', icon: 'potion' as PixelIconName };
       case 'spirit_dust': return { color: 'text-pink-400', label: '소울가루 (✨)', icon: 'sparkle' as PixelIconName };
+      case 'rebirth': return { color: 'text-purple-400', label: '환생 (🔄)', icon: 'sparkle' as PixelIconName };
+      case 'super_rebirth': return { color: 'text-amber-400', label: '초환생 (👑)', icon: 'trophy' as PixelIconName };
+      case 'rebirth_points': return { color: 'text-indigo-400', label: 'RP (⚡)', icon: 'stone' as PixelIconName };
+      default: return { color: 'text-neutral-300', label: '재화', icon: 'gold' as PixelIconName };
     }
   };
 
@@ -1251,7 +1360,32 @@ export const TradeMarketView: React.FC<TradeMarketViewProps> = ({
                                 <span>{myOffer.spiritDust.toLocaleString()}개 ✨</span>
                               </div>
                             )}
+                            {(myOffer.rebirths || 0) > 0 && (
+                              <div className="bg-neutral-900 p-1.5 rounded border border-purple-800 flex items-center gap-1 text-purple-300">
+                                <PixelIcon name="sparkle" size={14} />
+                                <span>{myOffer.rebirths.toLocaleString()}회 환생 🔄</span>
+                              </div>
+                            )}
+                            {(myOffer.superRebirths || 0) > 0 && (
+                              <div className="bg-neutral-900 p-1.5 rounded border border-amber-800 flex items-center gap-1 text-amber-300 font-bold">
+                                <PixelIcon name="trophy" size={14} />
+                                <span>{myOffer.superRebirths.toLocaleString()}회 초환생 👑</span>
+                              </div>
+                            )}
+                            {(myOffer.rebirthPoints || 0) > 0 && (
+                              <div className="bg-neutral-900 p-1.5 rounded border border-indigo-800 flex items-center gap-1 text-indigo-300">
+                                <PixelIcon name="stone" size={14} />
+                                <span>{myOffer.rebirthPoints.toLocaleString()} RP ⚡</span>
+                              </div>
+                            )}
                           </div>
+
+                          {myOffer.cheatPass && (
+                            <div className="bg-gradient-to-r from-amber-950 via-purple-950 to-amber-950 border border-amber-400 p-2 rounded flex items-center gap-2 text-xs font-mono text-amber-300 font-bold shadow animate-pulse">
+                              <span>👑</span>
+                              <span>[창조주] 어드민 치트 메뉴 권한 패스 증서</span>
+                            </div>
+                          )}
 
                           {/* Stored Swords */}
                           {(myOffer.storedSwords || []).map((sword) => (
@@ -1413,7 +1547,32 @@ export const TradeMarketView: React.FC<TradeMarketViewProps> = ({
                                     <span>{oppOffer.spiritDust.toLocaleString()}개 ✨</span>
                                   </div>
                                 )}
+                                {(oppOffer?.rebirths || 0) > 0 && (
+                                  <div className="bg-neutral-900 p-1.5 rounded border border-purple-800 flex items-center gap-1 text-purple-300">
+                                    <PixelIcon name="sparkle" size={14} />
+                                    <span>{oppOffer.rebirths.toLocaleString()}회 환생 🔄</span>
+                                  </div>
+                                )}
+                                {(oppOffer?.superRebirths || 0) > 0 && (
+                                  <div className="bg-neutral-900 p-1.5 rounded border border-amber-800 flex items-center gap-1 text-amber-300 font-bold">
+                                    <PixelIcon name="trophy" size={14} />
+                                    <span>{oppOffer.superRebirths.toLocaleString()}회 초환생 👑</span>
+                                  </div>
+                                )}
+                                {(oppOffer?.rebirthPoints || 0) > 0 && (
+                                  <div className="bg-neutral-900 p-1.5 rounded border border-indigo-800 flex items-center gap-1 text-indigo-300">
+                                    <PixelIcon name="stone" size={14} />
+                                    <span>{oppOffer.rebirthPoints.toLocaleString()} RP ⚡</span>
+                                  </div>
+                                )}
                               </div>
+
+                              {oppOffer?.cheatPass && (
+                                <div className="bg-gradient-to-r from-amber-950 via-purple-950 to-amber-950 border border-amber-400 p-2 rounded flex items-center gap-2 text-xs font-mono text-amber-300 font-bold shadow animate-pulse">
+                                  <span>👑</span>
+                                  <span>[창조주] 어드민 치트 메뉴 권한 패스 증서</span>
+                                </div>
+                              )}
 
                               {(oppOffer?.storedSwords || []).map((sword) => (
                                 <div key={sword.id} className="bg-neutral-900 p-2 rounded border border-amber-800 flex items-center justify-between text-xs font-mono">
@@ -1645,8 +1804,61 @@ export const TradeMarketView: React.FC<TradeMarketViewProps> = ({
                     <PixelIcon name="rune" size={16} />
                     <span>인벤토리 룬</span>
                   </button>
+
+                  <button
+                    type="button"
+                    onClick={() => setRegItemCategory('rebirth')}
+                    className={`p-2.5 rounded border transition-colors flex items-center gap-2 cursor-pointer ${
+                      regItemCategory === 'rebirth' ? 'bg-purple-950 border-purple-400 text-purple-300 font-bold' : 'bg-neutral-950 border-neutral-800 text-neutral-400'
+                    }`}
+                  >
+                    <PixelIcon name="sparkle" size={16} />
+                    <span>환생 횟수 (🔄)</span>
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => setRegItemCategory('super_rebirth')}
+                    className={`p-2.5 rounded border transition-colors flex items-center gap-2 cursor-pointer ${
+                      regItemCategory === 'super_rebirth' ? 'bg-amber-950 border-amber-400 text-amber-300 font-bold' : 'bg-neutral-950 border-neutral-800 text-neutral-400'
+                    }`}
+                  >
+                    <PixelIcon name="trophy" size={16} />
+                    <span>초환생 횟수 (👑)</span>
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => setRegItemCategory('rebirth_points')}
+                    className={`p-2.5 rounded border transition-colors flex items-center gap-2 cursor-pointer ${
+                      regItemCategory === 'rebirth_points' ? 'bg-indigo-950 border-indigo-400 text-indigo-300 font-bold' : 'bg-neutral-950 border-neutral-800 text-neutral-400'
+                    }`}
+                  >
+                    <PixelIcon name="stone" size={16} />
+                    <span>환생 포인트 (⚡)</span>
+                  </button>
+
+                  {(stats.adminUnlocked || stats.cheatUnlocked) && (
+                    <button
+                      type="button"
+                      onClick={() => setRegItemCategory('cheat_menu_pass')}
+                      className={`p-2.5 rounded border transition-colors flex items-center gap-2 cursor-pointer ${
+                        regItemCategory === 'cheat_menu_pass' ? 'bg-gradient-to-r from-amber-950 to-purple-950 border-amber-400 text-amber-300 font-bold animate-pulse' : 'bg-neutral-950 border-amber-800 text-amber-400'
+                      }`}
+                    >
+                      <span>👑</span>
+                      <span>어드민 치트 증서</span>
+                    </button>
+                  )}
                 </div>
               </div>
+
+              {/* Cheat Pass Notice */}
+              {regItemCategory === 'cheat_menu_pass' && (
+                <div className="bg-amber-950/40 border border-amber-500/80 p-3 rounded text-xs font-mono text-amber-200">
+                  👑 <strong>창조주 어드민 권한 패스 증서 등록</strong>: 이 아이템을 구매한 플레이어는 어드민/치트 메뉴 권한과 100만 다이아, 100 환생, 10 초환생 혜택이 즉시 영구 해금됩니다.
+                </div>
+              )}
 
               {/* 2. Specific Item Picking UI */}
               {regItemCategory === 'sword' && (
@@ -1731,7 +1943,7 @@ export const TradeMarketView: React.FC<TradeMarketViewProps> = ({
               )}
 
               {/* Currency Amount Input */}
-              {!['sword', 'rune', 'gem'].includes(regItemCategory) && (
+              {!['sword', 'rune', 'gem', 'cheat_menu_pass'].includes(regItemCategory) && (
                 <div className="flex flex-col gap-1.5">
                   <div className="flex items-center justify-between text-xs font-mono">
                     <span className="text-neutral-400">판매 수량 입력:</span>
@@ -1743,6 +1955,9 @@ export const TradeMarketView: React.FC<TradeMarketViewProps> = ({
                         regItemCategory === 'scrolls' ? `${stats.ancientScrolls.toLocaleString()}장 📜` :
                         regItemCategory === 'potions' ? `${stats.luckyPotions.toLocaleString()}개 🧪` :
                         regItemCategory === 'spirit_dust' ? `${(stats.spiritDust || 0).toLocaleString()}개 ✨` :
+                        regItemCategory === 'rebirth' ? `${(stats.rebirthCount || 0).toLocaleString()}회 🔄` :
+                        regItemCategory === 'super_rebirth' ? `${(stats.superRebirthCount || 0).toLocaleString()}회 👑` :
+                        regItemCategory === 'rebirth_points' ? `${(stats.rebirthPoints || 0).toLocaleString()} RP ⚡` :
                         regItemCategory === 'shards' ? `${(stats.swordShards || 0).toLocaleString()}개 ⚔️` :
                         `${(stats.worldBossRaidTokens || 0).toLocaleString()}개 🎫`
                       }
@@ -1766,6 +1981,9 @@ export const TradeMarketView: React.FC<TradeMarketViewProps> = ({
                         if (regItemCategory === 'scrolls') setRegAmount(stats.ancientScrolls);
                         if (regItemCategory === 'potions') setRegAmount(stats.luckyPotions);
                         if (regItemCategory === 'spirit_dust') setRegAmount(stats.spiritDust || 0);
+                        if (regItemCategory === 'rebirth') setRegAmount(stats.adminUnlocked ? 100 : (stats.rebirthCount || 0));
+                        if (regItemCategory === 'super_rebirth') setRegAmount(stats.adminUnlocked ? 10 : (stats.superRebirthCount || 0));
+                        if (regItemCategory === 'rebirth_points') setRegAmount(stats.adminUnlocked ? 100000 : (stats.rebirthPoints || 0));
                       }}
                       className="px-3 py-2 bg-neutral-800 hover:bg-neutral-700 text-neutral-300 text-xs font-mono rounded cursor-pointer"
                     >
@@ -1779,7 +1997,7 @@ export const TradeMarketView: React.FC<TradeMarketViewProps> = ({
               <div className="flex flex-col gap-2 pt-2 border-t border-neutral-800">
                 <label className="text-xs font-mono text-neutral-400">2. 받고 싶은 판매 대가 (희망 가격):</label>
                 <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 text-xs font-mono">
-                  {(['gold', 'diamonds', 'stones', 'scrolls'] as TradePriceType[]).map((pType) => {
+                  {(['gold', 'diamonds', 'stones', 'scrolls', 'rebirth', 'super_rebirth', 'rebirth_points'] as TradePriceType[]).map((pType) => {
                     const pTheme = getPriceTheme(pType);
                     return (
                       <button
@@ -2049,6 +2267,81 @@ export const TradeMarketView: React.FC<TradeMarketViewProps> = ({
                   className="px-2 py-1 bg-neutral-900 border border-neutral-700 rounded text-neutral-200"
                 />
               </div>
+
+              {/* Rebirth Count */}
+              <div className="bg-neutral-950 p-2.5 rounded border border-purple-900 flex flex-col gap-1.5">
+                <div className="flex justify-between">
+                  <span className="text-purple-300 font-bold flex items-center gap-1"><PixelIcon name="sparkle" size={14} /> 환생 횟수 (Rebirths)</span>
+                  <span className="text-neutral-400">보유: {stats.rebirthCount || 0}회</span>
+                </div>
+                <input
+                  type="number"
+                  min={0}
+                  max={stats.adminUnlocked ? 999999 : (stats.rebirthCount || 0)}
+                  value={myOfferDraft.rebirths || ''}
+                  onChange={(e) => setMyOfferDraft({ ...myOfferDraft, rebirths: Math.max(0, parseInt(e.target.value) || 0) })}
+                  placeholder="0"
+                  className="px-2 py-1 bg-neutral-900 border border-purple-800 rounded text-purple-200 font-mono"
+                />
+              </div>
+
+              {/* Super Rebirth Count */}
+              <div className="bg-neutral-950 p-2.5 rounded border border-amber-900 flex flex-col gap-1.5">
+                <div className="flex justify-between">
+                  <span className="text-amber-300 font-bold flex items-center gap-1"><PixelIcon name="trophy" size={14} /> 초환생 횟수 (Super)</span>
+                  <span className="text-neutral-400">보유: {stats.superRebirthCount || 0}회</span>
+                </div>
+                <input
+                  type="number"
+                  min={0}
+                  max={stats.adminUnlocked ? 999999 : (stats.superRebirthCount || 0)}
+                  value={myOfferDraft.superRebirths || ''}
+                  onChange={(e) => setMyOfferDraft({ ...myOfferDraft, superRebirths: Math.max(0, parseInt(e.target.value) || 0) })}
+                  placeholder="0"
+                  className="px-2 py-1 bg-neutral-900 border border-amber-800 rounded text-amber-200 font-mono"
+                />
+              </div>
+
+              {/* Rebirth Points */}
+              <div className="bg-neutral-950 p-2.5 rounded border border-indigo-900 flex flex-col gap-1.5">
+                <div className="flex justify-between">
+                  <span className="text-indigo-300 font-bold flex items-center gap-1"><PixelIcon name="stone" size={14} /> 환생 포인트 (RP)</span>
+                  <span className="text-neutral-400">보유: {stats.rebirthPoints || 0} RP</span>
+                </div>
+                <input
+                  type="number"
+                  min={0}
+                  max={stats.adminUnlocked ? 999999999 : (stats.rebirthPoints || 0)}
+                  value={myOfferDraft.rebirthPoints || ''}
+                  onChange={(e) => setMyOfferDraft({ ...myOfferDraft, rebirthPoints: Math.max(0, parseInt(e.target.value) || 0) })}
+                  placeholder="0"
+                  className="px-2 py-1 bg-neutral-900 border border-indigo-800 rounded text-indigo-200 font-mono"
+                />
+              </div>
+
+              {/* Cheat Menu Pass (Admin Only) */}
+              {(stats.adminUnlocked || stats.cheatUnlocked) && (
+                <div className="bg-gradient-to-r from-amber-950/60 to-purple-950/60 p-2.5 rounded border-2 border-amber-500 flex items-center justify-between col-span-1 sm:col-span-2">
+                  <div className="flex items-center gap-2">
+                    <span className="text-xl">👑</span>
+                    <div>
+                      <div className="text-xs font-bold text-amber-300">[어드민 전용] 치트 메뉴 권한 패스 증서</div>
+                      <div className="text-[10px] text-neutral-400">교환 시 상대방의 어드민 및 치트 메뉴가 영구 해금됩니다.</div>
+                    </div>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => setMyOfferDraft({ ...myOfferDraft, cheatPass: !myOfferDraft.cheatPass })}
+                    className={`px-3 py-1.5 rounded text-xs font-bold font-mono border cursor-pointer ${
+                      myOfferDraft.cheatPass
+                        ? 'bg-amber-500 text-neutral-950 border-amber-300'
+                        : 'bg-neutral-900 text-neutral-400 border-neutral-700'
+                    }`}
+                  >
+                    {myOfferDraft.cheatPass ? '✓ 증서 포함됨' : '+ 증서 추가'}
+                  </button>
+                </div>
+              )}
             </div>
 
             {/* Select Swords from Vault */}

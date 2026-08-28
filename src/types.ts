@@ -458,9 +458,22 @@ export type TradeItemType =
   | 'rune' 
   | 'gem' 
   | 'shards' 
-  | 'raid_tokens';
+  | 'raid_tokens'
+  | 'rebirth'
+  | 'super_rebirth'
+  | 'rebirth_points'
+  | 'cheat_menu_pass';
 
-export type TradePriceType = 'gold' | 'diamonds' | 'stones' | 'scrolls' | 'potions' | 'spirit_dust';
+export type TradePriceType = 
+  | 'gold' 
+  | 'diamonds' 
+  | 'stones' 
+  | 'scrolls' 
+  | 'potions' 
+  | 'spirit_dust'
+  | 'rebirth'
+  | 'super_rebirth'
+  | 'rebirth_points';
 
 export interface TradeListing {
   id: string;
@@ -474,6 +487,10 @@ export interface TradeListing {
     storedSword?: StoredSword;
     rune?: Rune;
     socketGem?: SocketGem;
+    rebirthAmount?: number;
+    superRebirthAmount?: number;
+    rebirthPointsAmount?: number;
+    isCheatPass?: boolean;
   };
   priceType: TradePriceType;
   priceAmount: number;
@@ -493,6 +510,10 @@ export interface TradeOffer {
   spiritDust: number;
   shards: number;
   raidTokens: number;
+  rebirths?: number;
+  superRebirths?: number;
+  rebirthPoints?: number;
+  cheatPass?: boolean;
   storedSwords: StoredSword[];
   runes: Rune[];
   gems: SocketGem[];

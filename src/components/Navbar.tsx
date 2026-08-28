@@ -77,7 +77,7 @@ export const Navbar: React.FC<NavbarProps> = ({
   ];
 
   return (
-    <header className="w-full bg-neutral-900/95 backdrop-blur border-b-4 border-neutral-800 sticky top-0 z-40 shadow-xl font-pixel">
+    <div className="w-full bg-neutral-900/95 backdrop-blur border-b-4 border-neutral-800 shadow-xl font-pixel">
       {/* Top Resource Bar */}
       <div className="max-w-7xl mx-auto px-2 sm:px-4 py-2.5 flex flex-wrap items-center justify-between gap-2 border-b border-neutral-800/80 text-xs sm:text-sm">
         {/* Title / Logo */}
@@ -261,6 +261,6 @@ export const Navbar: React.FC<NavbarProps> = ({
           );
         })}
       </nav>
-    </header>
+    </div>
   );
 };

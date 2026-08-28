@@ -1366,31 +1366,32 @@ export default function App() {
 
   return (
     <div className="min-h-screen bg-neutral-950 text-neutral-100 flex flex-col selection:bg-amber-500 selection:text-neutral-950">
-      {/* Real-time Floating Speedrun HUD */}
-      {speedrunState.isActive && (
-        <SpeedrunHUD
-          speedrunState={speedrunState}
-          stats={stats}
-          onPause={handlePauseSpeedrun}
-          onResume={handleResumeSpeedrun}
-          onAbort={handleAbortSpeedrun}
-          onOpenRecords={() => setIsSpeedrunSetupModalOpen(true)}
-          onOpenDetails={() => setIsSpeedrunSetupModalOpen(true)}
-        />
-      )}
+      {/* Top Sticky Header with Speedrun HUD & Navbar */}
+      <header className="sticky top-0 z-40 w-full flex flex-col shadow-2xl">
+        {speedrunState.isActive && (
+          <SpeedrunHUD
+            speedrunState={speedrunState}
+            stats={stats}
+            onPause={handlePauseSpeedrun}
+            onResume={handleResumeSpeedrun}
+            onAbort={handleAbortSpeedrun}
+            onOpenRecords={() => setIsSpeedrunSetupModalOpen(true)}
+            onOpenDetails={() => setIsSpeedrunSetupModalOpen(true)}
+          />
+        )}
 
-      {/* Top Header & Resources Navigation */}
-      <Navbar
-        stats={stats}
-        onOpenSaveModal={() => setIsSaveModalOpen(true)}
-        onOpenCheatModal={() => setIsCheatModalOpen(true)}
-        onOpenPartyModal={() => handleOpenPartyModal()}
-        onOpenSpeedrunModal={() => setIsSpeedrunSetupModalOpen(true)}
-        isSpeedrunActive={speedrunState.isActive}
-        onVersionClick={handleVersionClick}
-        activeTab={activeTab}
-        setActiveTab={setActiveTab}
-      />
+        <Navbar
+          stats={stats}
+          onOpenSaveModal={() => setIsSaveModalOpen(true)}
+          onOpenCheatModal={() => setIsCheatModalOpen(true)}
+          onOpenPartyModal={() => handleOpenPartyModal()}
+          onOpenSpeedrunModal={() => setIsSpeedrunSetupModalOpen(true)}
+          isSpeedrunActive={speedrunState.isActive}
+          onVersionClick={handleVersionClick}
+          activeTab={activeTab}
+          setActiveTab={setActiveTab}
+        />
+      </header>
 
       {/* Main Viewport Container */}
       <main className="flex-1 w-full pb-10">

@@ -46,6 +46,10 @@ export const EMPTY_OFFER: TradeOffer = {
   spiritDust: 0,
   shards: 0,
   raidTokens: 0,
+  rebirths: 0,
+  superRebirths: 0,
+  rebirthPoints: 0,
+  cheatPass: false,
   storedSwords: [],
   runes: [],
   gems: [],
@@ -66,6 +70,10 @@ export async function createMarketListing(params: {
     storedSword?: StoredSword;
     rune?: Rune;
     socketGem?: SocketGem;
+    rebirthAmount?: number;
+    superRebirthAmount?: number;
+    rebirthPointsAmount?: number;
+    isCheatPass?: boolean;
   };
   priceType: TradePriceType;
   priceAmount: number;

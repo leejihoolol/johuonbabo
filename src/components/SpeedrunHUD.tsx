@@ -93,7 +93,7 @@ export const SpeedrunHUD: React.FC<SpeedrunHUDProps> = ({
   const endingGoalMet = goal.targetEnding ? stats.theEndCompleted || false : true;
 
   return (
-    <aside aria-label="스피드런 타이머 및 실시간 재화" className="w-full bg-neutral-950 border-b-4 border-amber-500 shadow-[0_4px_30px_rgba(245,158,11,0.35)] px-2 sm:px-4 py-2 font-pixel sticky top-0 z-50">
+    <aside aria-label="스피드런 타이머 및 실시간 재화" className="w-full bg-neutral-950 border-b-4 border-amber-500 shadow-[0_4px_30px_rgba(245,158,11,0.35)] px-2 sm:px-4 py-2 font-pixel">
       <div className="max-w-7xl mx-auto flex flex-col gap-2">
         {/* Main Row: Mode Badge, Live Stopwatch, Live Resources, Action Controls */}
         <div className="w-full flex items-center justify-between gap-2 flex-wrap sm:flex-nowrap">
@@ -124,7 +124,7 @@ export const SpeedrunHUD: React.FC<SpeedrunHUDProps> = ({
                 )}
               </div>
               <span className="text-[10px] text-neutral-400 font-mono">
-                {speedrunState.startMode === 'clean' ? '공식 클린 런' : '컨티뉴 챌린지'}
+                {speedrunState.startMode === 'clean' ? '공식 클린 런' : '컨티뉴 챌린지'} • W{stats.currentWorldId || 1}
               </span>
             </div>
           </div>
@@ -144,41 +144,49 @@ export const SpeedrunHUD: React.FC<SpeedrunHUDProps> = ({
             </span>
           </div>
 
-          {/* Center Right: Real-time Resources Live Bar (재화 현황) */}
+          {/* Center Right: Real-time Resources Live Bar (재화 현황 전체) */}
           <div className="flex items-center gap-1.5 sm:gap-2 overflow-x-auto py-0.5 text-xs font-mono scrollbar-none">
             {/* Gold */}
-            <div className="flex items-center gap-1 bg-neutral-900/90 px-2 py-1 rounded border border-amber-500/60 shadow-sm shrink-0">
+            <div className="flex items-center gap-1 bg-neutral-900/90 px-2 py-1 rounded border border-amber-500/60 shadow-sm shrink-0" title={`골드: ${stats.gold.toLocaleString()} G`}>
               <PixelIcon name="gold" size={15} />
               <span className="font-bold text-amber-300">{formatNum(stats.gold)}</span>
             </div>
 
             {/* Diamonds */}
-            <div className="flex items-center gap-1 bg-neutral-900/90 px-2 py-1 rounded border border-cyan-500/60 shadow-sm shrink-0">
+            <div className="flex items-center gap-1 bg-neutral-900/90 px-2 py-1 rounded border border-cyan-500/60 shadow-sm shrink-0" title={`다이아몬드: ${stats.diamonds.toLocaleString()}`}>
               <PixelIcon name="diamond" size={15} />
               <span className="font-bold text-cyan-300">{formatNum(stats.diamonds)}</span>
             </div>
 
             {/* Enhancement Stones */}
-            <div className="flex items-center gap-1 bg-neutral-900/90 px-2 py-1 rounded border border-purple-500/60 shadow-sm shrink-0">
+            <div className="flex items-center gap-1 bg-neutral-900/90 px-2 py-1 rounded border border-purple-500/60 shadow-sm shrink-0" title={`강화석: ${stats.enhancementStones.toLocaleString()}개`}>
               <PixelIcon name="stone" size={15} />
               <span className="font-bold text-purple-300">{formatNum(stats.enhancementStones)}</span>
             </div>
 
             {/* Protection Scrolls */}
-            <div className="flex items-center gap-1 bg-neutral-900/90 px-2 py-1 rounded border border-emerald-500/60 shadow-sm shrink-0" title="파괴 방지 보호 주문서">
+            <div className="flex items-center gap-1 bg-neutral-900/90 px-2 py-1 rounded border border-emerald-500/60 shadow-sm shrink-0" title={`파괴 방지 보호 주문서: ${stats.ancientScrolls}장`}>
               <PixelIcon name="scroll" size={15} />
               <span className="font-bold text-emerald-300">{stats.ancientScrolls}</span>
             </div>
 
             {/* Lucky Potions */}
-            <div className="flex items-center gap-1 bg-neutral-900/90 px-2 py-1 rounded border border-rose-500/60 shadow-sm shrink-0" title="강화 성공률 증가 행운의 물약">
+            <div className="flex items-center gap-1 bg-neutral-900/90 px-2 py-1 rounded border border-rose-500/60 shadow-sm shrink-0" title={`행운의 물약: ${stats.luckyPotions}개`}>
               <PixelIcon name="potion" size={15} />
               <span className="font-bold text-rose-300">{stats.luckyPotions}</span>
             </div>
 
+            {/* Sword Shards */}
+            {stats.swordShards > 0 && (
+              <div className="flex items-center gap-1 bg-neutral-900/90 px-2 py-1 rounded border border-slate-500/60 shadow-sm shrink-0" title={`검 파편: ${stats.swordShards}개`}>
+                <PixelIcon name="shard" size={15} />
+                <span className="font-bold text-slate-300">{stats.swordShards}</span>
+              </div>
+            )}
+
             {/* Spirit Dust */}
             {(stats.spiritDust || 0) > 0 && (
-              <div className="flex items-center gap-1 bg-neutral-900/90 px-2 py-1 rounded border border-pink-500/60 shadow-sm shrink-0" title="검령 소울 가루">
+              <div className="flex items-center gap-1 bg-neutral-900/90 px-2 py-1 rounded border border-pink-500/60 shadow-sm shrink-0" title={`검령 소울 가루: ${(stats.spiritDust || 0).toLocaleString()}`}>
                 <Sparkles className="w-3.5 h-3.5 text-pink-400" />
                 <span className="font-bold text-pink-300">{formatNum(stats.spiritDust || 0)}</span>
               </div>
@@ -186,8 +194,8 @@ export const SpeedrunHUD: React.FC<SpeedrunHUDProps> = ({
 
             {/* Rebirth Points */}
             {(stats.rebirthPoints || 0) > 0 && (
-              <div className="flex items-center gap-1 bg-neutral-900/90 px-2 py-1 rounded border border-indigo-500/60 shadow-sm shrink-0" title="환생 포인트">
-                <span className="text-indigo-400">🌀</span>
+              <div className="flex items-center gap-1 bg-neutral-900/90 px-2 py-1 rounded border border-indigo-500/60 shadow-sm shrink-0" title={`환생 포인트: ${(stats.rebirthPoints || 0).toLocaleString()} RP`}>
+                <span className="text-indigo-400 text-xs">🌀</span>
                 <span className="font-bold text-indigo-300">{formatNum(stats.rebirthPoints || 0)}</span>
               </div>
             )}
