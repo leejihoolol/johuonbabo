@@ -217,7 +217,36 @@ export function calculateTotalMultipliers(stats: PlayerStats) {
   const gemAtkMult = 1 + gemAtkBonus / 100;
   const gemGoldMult = 1 + gemGoldBonus / 100;
 
-  // 9. Cheat Mode Multiplier
+  // 9. Awakening Multipliers (초월 각성: 심연, 천상, 태초·창세)
+  const awkLevel = stats.swordAwakeningLevel || 0;
+  let awakeningAtkMult = 1;
+  let awakeningGoldMult = 1;
+  let awakeningSuccessBonus = 0;
+  let awakeningCritBonus = 0;
+  let awakeningCritDmgBonus = 0;
+  let awakeningBossDmgBonus = 0;
+
+  if (awkLevel >= 1) {
+    awakeningAtkMult *= 4.0; // +300%
+    awakeningCritBonus += 10;
+    awakeningCritDmgBonus += 150;
+  }
+  if (awkLevel >= 2) {
+    awakeningAtkMult *= 2.25; // cumulative 9.0x (+800%)
+    awakeningGoldMult *= 5.0; // +400%
+    awakeningSuccessBonus += 3.0; // +3% success
+    awakeningBossDmgBonus += 500;
+  }
+  if (awkLevel >= 3) {
+    awakeningAtkMult *= 2.9; // cumulative ~26x (+2,500%)
+    awakeningGoldMult *= 2.5; // cumulative 12.5x
+    awakeningSuccessBonus += 2.0; // cumulative +5%
+    awakeningCritBonus += 15;
+    awakeningCritDmgBonus += 1000;
+    awakeningBossDmgBonus += 1500;
+  }
+
+  // 10. Cheat Mode Multiplier
   const cheatAtkMult = stats.cheatDmg1000x ? 1000 : 1;
 
   // Final combined multipliers
@@ -229,6 +258,7 @@ export function calculateTotalMultipliers(stats: PlayerStats) {
     spiritAtkMult *
     relicAtkMult *
     gemAtkMult *
+    awakeningAtkMult *
     cheatAtkMult;
 
   const totalGoldMult =
@@ -239,16 +269,17 @@ export function calculateTotalMultipliers(stats: PlayerStats) {
     staircaseWorldGoldMult *
     spiritGoldMult *
     relicGoldMult *
-    gemGoldMult;
+    gemGoldMult *
+    awakeningGoldMult;
 
   return {
     rebirthGoldMult,
     rpAtkMult,
     rpGoldMult,
-    rpSuccessBonus: rpSuccessBonus + relicEnhanceBonus + gemEnhanceBonus,
+    rpSuccessBonus: rpSuccessBonus + relicEnhanceBonus + gemEnhanceBonus + awakeningSuccessBonus,
     rpStoneBonus,
-    rpCritBonus: rpCritBonus + spiritCritBonus,
-    rpCritDmgBonus: rpCritDmgBonus + gemCritDmgBonus,
+    rpCritBonus: rpCritBonus + spiritCritBonus + awakeningCritBonus,
+    rpCritDmgBonus: rpCritDmgBonus + gemCritDmgBonus + awakeningCritDmgBonus,
     superRebirthAtkMult,
     superRebirthGoldMult,
     vaultAtkMult,
@@ -259,9 +290,12 @@ export function calculateTotalMultipliers(stats: PlayerStats) {
     spiritGoldMult,
     relicAtkMult,
     relicGoldMult,
-    relicBossDamageBonus,
+    relicBossDamageBonus: relicBossDamageBonus + awakeningBossDmgBonus,
     gemAtkMult,
     gemGoldMult,
+    awakeningAtkMult,
+    awakeningGoldMult,
+    awakeningSuccessBonus,
     cheatAtkMult,
     totalAtkMult,
     totalGoldMult,

@@ -254,6 +254,26 @@ export interface TierStaircase {
   multiplierValue: number;
 }
 
+export interface SwordAwakeningStage {
+  stage: number; // 1, 2, 3
+  name: string; // "심연 각성", "천상 각성", "태초·창세 각성"
+  subTitle: string;
+  maxLevel: number; // 45, 56, 67
+  requiredPreviousLevel: number; // 35, 45, 56
+  requiredShards: number;
+  requiredStones: number;
+  requiredDust: number;
+  requiredRP: number;
+  requiredGold: number;
+  requiredDiamonds: number;
+  requiredScrolls: number;
+  atkBonusMultiplier: number;
+  description: string;
+  benefits: string[];
+  themeColor: string;
+  auraEffectName: string;
+}
+
 export interface PlayerStats {
   gold: number;
   diamonds: number;
@@ -264,6 +284,7 @@ export interface PlayerStats {
   
   currentSwordLevel: number;
   maxSwordLevelReached: number;
+  swordAwakeningLevel?: number; // 0 = none, 1 = abyssal (max 45), 2 = celestial (max 56), 3 = primordial (max 67)
   
   totalEnhanceAttempts: number;
   totalEnhanceSuccess: number;

@@ -62,6 +62,7 @@ export const Navbar: React.FC<NavbarProps> = ({
 
   const tabs: { id: string; label: string; icon: PixelIconName; highlight?: boolean }[] = [
     { id: 'anvil', label: '모루 강화', icon: 'anvil' },
+    { id: 'awakening', label: '⚔️ 초월 각성 (+67강)', icon: 'sword' as PixelIconName, highlight: (stats.swordAwakeningLevel || 0) > 0 || stats.currentSwordLevel >= 35 },
     { id: 'dungeon', label: '10대 월드 던전', icon: 'dungeon' },
     { id: 'world_boss', label: '🔥 월드 보스 토벌', icon: 'boss' as PixelIconName, highlight: true },
     { id: 'trade', label: '🤝 자유 거래소·직거래', icon: 'shop' as PixelIconName, highlight: true },

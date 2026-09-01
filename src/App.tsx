@@ -28,9 +28,11 @@ import { WorldBossView } from './components/WorldBossView';
 import { SwordTowerView } from './components/SwordTowerView';
 import { SwordSpiritView } from './components/SwordSpiritView';
 import { TradeMarketView } from './components/TradeMarketView';
+import { AwakeningView } from './components/AwakeningView';
 import { sound } from './utils/sound';
 import { getWorldSword, calculateTotalMultipliers } from './utils/worldSwordHelper';
 import { subscribeToPartyRoom } from './utils/firebaseParty';
+import { AWAKENING_STAGES, getAwakeningMaxLevel } from './data/awakeningData';
 
 const STORAGE_KEY = 'PIXEL_SWORD_MASTER_SAVE_V2';
 
@@ -230,9 +232,10 @@ export default function App() {
 
   // Current and Next Sword Data for Current World
   const currentWorldId = stats.currentWorldId || 1;
+  const currentMaxLevelAllowed = getAwakeningMaxLevel(stats.swordAwakeningLevel || 0);
   const currentSword: Sword = getWorldSword(currentWorldId, stats.currentSwordLevel || 0);
   const nextSword: Sword | null =
-    (stats.currentSwordLevel || 0) < 35 ? getWorldSword(currentWorldId, (stats.currentSwordLevel || 0) + 1) : null;
+    (stats.currentSwordLevel || 0) < currentMaxLevelAllowed ? getWorldSword(currentWorldId, (stats.currentSwordLevel || 0) + 1) : null;
 
   // Add Log Helper
   const addLog = (text: string, type: GameLog['type']) => {
@@ -458,8 +461,10 @@ export default function App() {
 
   // Core Enhance Logic with Guaranteed Safety Scroll Consumption & Protection
   const handleEnhance = (useQteBonus = false): { success: boolean; resultType: 'success' | 'fail' | 'destroy' | 'drop' } => {
-    if (currentSword.level >= 35) {
+    const maxLevelLimit = getAwakeningMaxLevel(stats.swordAwakeningLevel || 0);
+    if (currentSword.level >= maxLevelLimit) {
       setIsAutoEnhancing(false);
+      addLog(`[한계 도달] 현재 각성 단계의 최대치(+${maxLevelLimit}강)에 도달했습니다. [초월 각성] 메뉴에서 한계돌파를 진행하세요!`, 'boss');
       return { success: false, resultType: 'fail' };
     }
 
@@ -787,6 +792,58 @@ export default function App() {
       },
     }));
     addLog(`[연구 완료] 대장간 연구 [${researchId}] 레벨업 완료!`, 'system');
+  };
+
+  // Handle Sword Awakening Upgrade (초월 각성 의식 거행)
+  const handleAwaken = (stageNum: number): boolean => {
+    const stageObj = AWAKENING_STAGES.find((s) => s.stage === stageNum);
+    if (!stageObj) return false;
+
+    const currentAwk = stats.swordAwakeningLevel || 0;
+    if (currentAwk >= stageNum) return false;
+    if (currentAwk < stageNum - 1) {
+      addLog(`[각성 실패] 이전 단계(제 ${stageNum - 1}각성)를 먼저 완수해야 합니다.`, 'fail');
+      return false;
+    }
+    if (stats.currentSwordLevel < stageObj.requiredPreviousLevel) {
+      addLog(`[각성 실패] 현재 검 강화 수치가 +${stageObj.requiredPreviousLevel}강에 도달해야 합니다.`, 'fail');
+      return false;
+    }
+    if (
+      (stats.swordShards || 0) < stageObj.requiredShards ||
+      (stats.enhancementStones || 0) < stageObj.requiredStones ||
+      (stats.spiritDust || 0) < stageObj.requiredDust ||
+      (stats.rebirthPoints || 0) < stageObj.requiredRP ||
+      (stats.gold || 0) < stageObj.requiredGold ||
+      (stats.diamonds || 0) < stageObj.requiredDiamonds ||
+      (stats.ancientScrolls || 0) < stageObj.requiredScrolls
+    ) {
+      addLog(`[각성 실패] 각성에 필요한 재료가 부족합니다.`, 'fail');
+      return false;
+    }
+
+    setStats((prev) => {
+      const updated = {
+        ...prev,
+        swordAwakeningLevel: stageNum,
+        swordShards: Math.max(0, (prev.swordShards || 0) - stageObj.requiredShards),
+        enhancementStones: Math.max(0, (prev.enhancementStones || 0) - stageObj.requiredStones),
+        spiritDust: Math.max(0, (prev.spiritDust || 0) - stageObj.requiredDust),
+        rebirthPoints: Math.max(0, (prev.rebirthPoints || 0) - stageObj.requiredRP),
+        gold: Math.max(0, (prev.gold || 0) - stageObj.requiredGold),
+        diamonds: Math.max(0, (prev.diamonds || 0) - stageObj.requiredDiamonds),
+        ancientScrolls: Math.max(0, (prev.ancientScrolls || 0) - stageObj.requiredScrolls),
+      };
+      try {
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(updated));
+      } catch {
+        // Ignored
+      }
+      return updated;
+    });
+
+    addLog(`⚡ [초월 각성 성공!] 제 ${stageNum}각성 [${stageObj.name}]을 완수했습니다! 최대 강화 수치가 +${stageObj.maxLevel}강으로 확장되었습니다!`, 'boss');
+    return true;
   };
 
   // Rebirth Handler (Unlocked at 100k Gold)
@@ -1437,6 +1494,15 @@ export default function App() {
             onToggleLuckyPotion={(enabled) => {
               setStats((prev) => ({ ...prev, useLuckyPotionAuto: enabled }));
             }}
+            onNavigateToAwakening={() => setActiveTab('awakening')}
+          />
+        )}
+
+        {activeTab === 'awakening' && (
+          <AwakeningView
+            stats={stats}
+            onAwaken={handleAwaken}
+            onNavigateToAnvil={() => setActiveTab('anvil')}
           />
         )}
 

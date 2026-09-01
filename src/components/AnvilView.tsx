@@ -2,12 +2,13 @@ import React, { useEffect, useRef, useState } from 'react';
 import confetti from 'canvas-confetti';
 import { 
   Hammer, Shield, Sparkles, AlertTriangle, Play, Square, 
-  Coins, Layers, ArrowUpRight, CheckCircle2, XCircle, RotateCcw
+  Coins, Layers, ArrowUpRight, CheckCircle2, XCircle, RotateCcw, Zap, ChevronRight
 } from 'lucide-react';
 import { GameLog, PlayerStats, Sword } from '../types';
 import { PixelIcon } from './PixelIcon';
 import { drawPixelSword } from '../utils/pixelSwordRenderer';
 import { sound } from '../utils/sound';
+import { getAwakeningMaxLevel, getAwakeningTitle } from '../data/awakeningData';
 
 interface AnvilViewProps {
   stats: PlayerStats;
@@ -22,6 +23,7 @@ interface AnvilViewProps {
   isAutoEnhancing: boolean;
   onToggleSafetyScroll: (enabled: boolean) => void;
   onToggleLuckyPotion: (enabled: boolean) => void;
+  onNavigateToAwakening?: () => void;
 }
 
 export const AnvilView: React.FC<AnvilViewProps> = ({
@@ -37,13 +39,15 @@ export const AnvilView: React.FC<AnvilViewProps> = ({
   isAutoEnhancing,
   onToggleSafetyScroll,
   onToggleLuckyPotion,
+  onNavigateToAwakening,
 }) => {
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
   const frameRef = useRef(0);
   const isStrikingRef = useRef(false);
   const [isStriking, setIsStriking] = useState(false);
   const [showAutoModal, setShowAutoModal] = useState(false);
-  const [targetLevel, setTargetLevel] = useState(stats.autoEnhanceTarget || 10);
+  const maxSwordLevel = getAwakeningMaxLevel(stats.swordAwakeningLevel || 0);
+  const [targetLevel, setTargetLevel] = useState(Math.min(maxSwordLevel, stats.autoEnhanceTarget || 10));
   const [qteActive, setQteActive] = useState(false);
   const [qteProgress, setQteProgress] = useState(0);
   const [qteDirection, setQteDirection] = useState(1);
@@ -68,7 +72,8 @@ export const AnvilView: React.FC<AnvilViewProps> = ({
             canvas.height,
             stats.elementInfusion,
             frameRef.current,
-            isStrikingRef.current
+            isStrikingRef.current,
+            stats.swordAwakeningLevel || 0
           );
         }
       }
@@ -76,7 +81,7 @@ export const AnvilView: React.FC<AnvilViewProps> = ({
     };
     render();
     return () => cancelAnimationFrame(animationId);
-  }, [currentSword, stats.elementInfusion]);
+  }, [currentSword, stats.elementInfusion, stats.swordAwakeningLevel]);
 
   // Keep isStrikingRef in sync
   useEffect(() => {
@@ -215,11 +220,48 @@ export const AnvilView: React.FC<AnvilViewProps> = ({
     우주: 'text-emerald-300 border-emerald-500 bg-emerald-950/60 shadow-[0_0_15px_rgba(52,211,153,0.4)]',
   };
 
-  const isMaxLevel = currentSword.level >= 35;
+  const isMaxLevel = currentSword.level >= maxSwordLevel;
   const canAfford = stats.gold >= currentSword.costGold && stats.enhancementStones >= currentSword.costStones;
 
   return (
     <div className="max-w-7xl mx-auto p-2 sm:p-4 grid grid-cols-1 lg:grid-cols-12 gap-4 font-pixel">
+      {/* Awakening Limit Banner if reached limit */}
+      {isMaxLevel && (
+        <div className="lg:col-span-12 bg-gradient-to-r from-purple-950/90 via-amber-950/80 to-purple-950/90 border-2 border-purple-500 rounded-xl p-3.5 flex flex-col sm:flex-row items-center justify-between gap-3 shadow-xl">
+          <div className="flex items-center gap-3">
+            <div className="p-2 bg-purple-900/80 border border-purple-400 rounded-lg text-purple-300">
+              <Zap size={24} className="animate-pulse" />
+            </div>
+            <div>
+              <div className="text-sm font-bold text-amber-300 flex items-center gap-1.5">
+                <span>현재 각성 한계 (+{maxSwordLevel}강)에 도달했습니다!</span>
+                <span className="text-xs px-2 py-0.5 rounded bg-purple-900 text-purple-200 border border-purple-600 font-mono">
+                  {getAwakeningTitle(stats.swordAwakeningLevel || 0)}
+                </span>
+              </div>
+              <p className="text-xs text-neutral-300 font-sans mt-0.5">
+                {(stats.swordAwakeningLevel || 0) < 3 
+                  ? `[초월 각성] 메뉴에서 제 ${(stats.swordAwakeningLevel || 0) + 1}각성을 거행하여 최대 +${(stats.swordAwakeningLevel || 0) === 0 ? 45 : (stats.swordAwakeningLevel || 0) === 1 ? 56 : 67}강까지 한계돌파할 수 있습니다.`
+                  : '축하합니다! 최종 제 3각성(태초·창세) 최고 한계 강화치 +67강에 도달했습니다!'}
+              </p>
+            </div>
+          </div>
+
+          {onNavigateToAwakening && (stats.swordAwakeningLevel || 0) < 3 && (
+            <button
+              onClick={() => {
+                sound.playClick();
+                onNavigateToAwakening();
+              }}
+              className="px-4 py-2 bg-gradient-to-r from-purple-600 to-amber-500 hover:from-purple-500 hover:to-amber-400 text-neutral-950 font-bold rounded-lg text-xs font-pixel flex items-center gap-1.5 shadow cursor-pointer whitespace-nowrap"
+            >
+              <span>초월 각성 바로가기</span>
+              <ChevronRight size={14} />
+            </button>
+          )}
+        </div>
+      )}
+
       {/* LEFT / CENTER: The Anvil Stage & Sword Canvas */}
       <div className="lg:col-span-7 flex flex-col gap-4">
         {/* Main Forge Box */}
@@ -637,7 +679,7 @@ export const AnvilView: React.FC<AnvilViewProps> = ({
                   <input
                     type="range"
                     min={currentSword.level + 1}
-                    max={35}
+                    max={maxSwordLevel}
                     value={targetLevel}
                     onChange={(e) => setTargetLevel(Number(e.target.value))}
                     className="flex-1 accent-amber-500 cursor-pointer"

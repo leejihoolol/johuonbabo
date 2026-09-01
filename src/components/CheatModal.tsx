@@ -452,16 +452,16 @@ export const CheatModal: React.FC<CheatModalProps> = ({
             <div className="bg-neutral-950 p-4 rounded-xl border border-neutral-800 flex flex-col gap-3">
               <h4 className="text-xs sm:text-sm font-bold text-indigo-300 flex items-center gap-1.5">
                 <Sword className="w-4 h-4" />
-                <span>원하는 검 강화 수치 직접 타이핑 주입 (+0 ~ +35강)</span>
+                <span>원하는 검 강화 수치 직접 타이핑 주입 (+0 ~ +67강)</span>
               </h4>
 
               <div className="flex flex-col sm:flex-row items-center gap-3">
                 <input
                   type="number"
                   min="0"
-                  max="35"
+                  max="67"
                   value={customSwordLvl}
-                  onChange={(e) => setCustomSwordLvl(Math.max(0, Math.min(35, parseInt(e.target.value) || 0)))}
+                  onChange={(e) => setCustomSwordLvl(Math.max(0, Math.min(67, parseInt(e.target.value) || 0)))}
                   className="w-full sm:w-48 bg-neutral-900 border-2 border-indigo-500/60 rounded px-3 py-2 text-indigo-300 font-mono text-sm font-bold outline-none text-center"
                 />
                 <button
@@ -474,6 +474,63 @@ export const CheatModal: React.FC<CheatModalProps> = ({
                 >
                   <CheckCircle2 className="w-4 h-4" />
                   <span>+{customSwordLvl}강으로 즉시 설정</span>
+                </button>
+              </div>
+            </div>
+
+            {/* Quick Awakening Stage & Materials Injection */}
+            <div className="bg-neutral-950 p-4 rounded-xl border border-purple-800/80 flex flex-col gap-3">
+              <h4 className="text-xs sm:text-sm font-bold text-purple-300 flex items-center gap-1.5">
+                <Sparkles className="w-4 h-4 text-purple-400" />
+                <span>초월 각성 (+67강) 테스트 프리셋 & 재료 풀팩</span>
+              </h4>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-2">
+                <button
+                  onClick={() => {
+                    sound.playSuccess(true);
+                    onAddResources(1000000000, 10000, 10000, 100, 100, 10000);
+                  }}
+                  className="p-2.5 bg-neutral-900 hover:bg-neutral-800 border border-purple-700/60 rounded text-left flex flex-col gap-1 cursor-pointer"
+                >
+                  <span className="text-xs font-bold text-purple-300">각성 재료 풀팩 지급</span>
+                  <span className="text-[10px] text-neutral-400 font-mono">파편 1만, 강화석 1만, 주문서 100장</span>
+                </button>
+
+                <button
+                  onClick={() => {
+                    sound.playSuccess(true);
+                    if (onCustomSetSwordLevelDirect) onCustomSetSwordLevelDirect(45);
+                    else onSetSwordLevel(45);
+                  }}
+                  className="p-2.5 bg-neutral-900 hover:bg-neutral-800 border border-purple-700/60 rounded text-left flex flex-col gap-1 cursor-pointer"
+                >
+                  <span className="text-xs font-bold text-purple-300">제 1각성 +45강 도검</span>
+                  <span className="text-[10px] text-neutral-400 font-mono">심연 각성 최고치 직행</span>
+                </button>
+
+                <button
+                  onClick={() => {
+                    sound.playSuccess(true);
+                    if (onCustomSetSwordLevelDirect) onCustomSetSwordLevelDirect(56);
+                    else onSetSwordLevel(56);
+                  }}
+                  className="p-2.5 bg-neutral-900 hover:bg-neutral-800 border border-amber-700/60 rounded text-left flex flex-col gap-1 cursor-pointer"
+                >
+                  <span className="text-xs font-bold text-amber-300">제 2각성 +56강 도검</span>
+                  <span className="text-[10px] text-neutral-400 font-mono">천상 각성 최고치 직행</span>
+                </button>
+
+                <button
+                  onClick={() => {
+                    sound.playSuccess(true);
+                    if (onCustomSetSwordLevelDirect) onCustomSetSwordLevelDirect(67);
+                    else onSetSwordLevel(67);
+                  }}
+                  className="p-2.5 bg-gradient-to-r from-purple-900 via-amber-900 to-sky-900 hover:opacity-90 border border-sky-500 rounded text-left flex flex-col gap-1 cursor-pointer"
+                >
+                  <span className="text-xs font-bold text-sky-200">제 3각성 +67강 극의</span>
+                  <span className="text-[10px] text-amber-300 font-mono">태초·창세 신검 종결 직행</span>
                 </button>
               </div>
             </div>
