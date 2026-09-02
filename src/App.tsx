@@ -10,6 +10,10 @@ import { CodexView } from './components/CodexView';
 import { ShopView } from './components/ShopView';
 import { AchievementsView } from './components/AchievementsView';
 import { SaveModal } from './components/SaveModal';
+import { SettingsModal } from './components/SettingsModal';
+import { TutorialModal } from './components/TutorialModal';
+import { InteractiveTutorialBanner } from './components/InteractiveTutorialBanner';
+import { INTERACTIVE_TUTORIAL_MISSIONS } from './data/interactiveTutorialData';
 import { CheatModal } from './components/CheatModal';
 import { AdminPasswordModal } from './components/AdminPasswordModal';
 import { EndingCinematicModal } from './components/EndingCinematicModal';
@@ -129,6 +133,11 @@ const DEFAULT_STATS: PlayerStats = {
   unlockedCheatMode: false,
   cheatSuccessRate100: false,
   cheatDmg1000x: false,
+
+  // Interactive Tutorial
+  tutorialCompleted: false,
+  tutorialActive: true,
+  tutorialStep: 0,
 };
 
 export default function App() {
@@ -148,6 +157,18 @@ export default function App() {
 
   const [activeTab, setActiveTab] = useState<string>('anvil');
   const [isSaveModalOpen, setIsSaveModalOpen] = useState(false);
+  const [isSettingsModalOpen, setIsSettingsModalOpen] = useState(false);
+  const [isTutorialModalOpen, setIsTutorialModalOpen] = useState(() => {
+    try {
+      const saved = localStorage.getItem(STORAGE_KEY);
+      if (!saved) return true; // First time player!
+      const parsed = JSON.parse(saved);
+      return parsed.tutorialCompleted === false || (!parsed.tutorialCompleted && (parsed.totalEnhanceAttempts || 0) === 0 && (parsed.currentSwordLevel || 0) === 0);
+    } catch {
+      return false;
+    }
+  });
+  const [isTutorialFromSettings, setIsTutorialFromSettings] = useState(false);
   const [isCheatModalOpen, setIsCheatModalOpen] = useState(false);
   const [isAdminPasswordModalOpen, setIsAdminPasswordModalOpen] = useState(false);
   const [isPartyModalOpen, setIsPartyModalOpen] = useState(false);
@@ -568,6 +589,11 @@ export default function App() {
         unlockedCodex: newCodex,
       }));
 
+      // Check tutorial mission 1 (basic enhance)
+      if (stats.tutorialActive && (stats.tutorialStep === 0 || !stats.tutorialStep)) {
+        setTimeout(() => handleAdvanceTutorialMission('mission_enhance'), 100);
+      }
+
       // Check if auto-enhance target achieved
       if (nextLvl >= stats.autoEnhanceTarget) {
         setIsAutoEnhancing(false);
@@ -767,6 +793,11 @@ export default function App() {
       spiritDust: (prev.spiritDust || 0) + earnedDust,
       ancientScrolls: scrollDrop ? prev.ancientScrolls + 1 : prev.ancientScrolls,
     }));
+
+    // Check tutorial mission 2 (dungeon combat)
+    if (stats.tutorialActive && stats.tutorialStep === 1) {
+      setTimeout(() => handleAdvanceTutorialMission('mission_dungeon'), 100);
+    }
   };
 
   // Stage Clear Handler
@@ -792,6 +823,11 @@ export default function App() {
       },
     }));
     addLog(`[연구 완료] 대장간 연구 [${researchId}] 레벨업 완료!`, 'system');
+
+    // Check tutorial mission 4 (blacksmith research)
+    if (stats.tutorialActive && stats.tutorialStep === 3) {
+      setTimeout(() => handleAdvanceTutorialMission('mission_blacksmith'), 100);
+    }
   };
 
   // Handle Sword Awakening Upgrade (초월 각성 의식 거행)
@@ -1348,6 +1384,11 @@ export default function App() {
         inventoryRunes: inv,
       };
     });
+
+    // Check tutorial mission 3 (shop buy)
+    if (stats.tutorialActive && stats.tutorialStep === 2) {
+      setTimeout(() => handleAdvanceTutorialMission('mission_shop'), 100);
+    }
   };
 
   // Craft Shards Handler
@@ -1409,6 +1450,47 @@ export default function App() {
     return false;
   };
 
+  // Interactive Tutorial Mission Completion Handler
+  const handleAdvanceTutorialMission = (missionId: string) => {
+    const currentStep = stats.tutorialStep || 0;
+    if (stats.tutorialCompleted || stats.tutorialActive === false) return;
+    if (currentStep >= INTERACTIVE_TUTORIAL_MISSIONS.length) return;
+
+    const mission = INTERACTIVE_TUTORIAL_MISSIONS[currentStep];
+    if (mission.id !== missionId) return;
+
+    sound.playLevelUp();
+
+    const nextStep = currentStep + 1;
+    const isAllCompleted = nextStep >= INTERACTIVE_TUTORIAL_MISSIONS.length;
+
+    setStats((prev) => {
+      const updated: PlayerStats = {
+        ...prev,
+        gold: prev.gold + mission.rewardGold,
+        enhancementStones: prev.enhancementStones + mission.rewardStones,
+        diamonds: prev.diamonds + mission.rewardDiamonds,
+        ancientScrolls: mission.rewardScrolls ? prev.ancientScrolls + mission.rewardScrolls : prev.ancientScrolls,
+        tutorialStep: nextStep,
+        tutorialCompleted: isAllCompleted,
+        tutorialActive: !isAllCompleted,
+      };
+      try {
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(updated));
+      } catch {
+        // Ignored
+      }
+      return updated;
+    });
+
+    addLog(`✨ [튜토리얼 퀘스트 완료!] #${mission.stepNumber} [${mission.title}] 완료! (보상: ${mission.rewardText})`, 'loot');
+
+    if (isAllCompleted) {
+      sound.playSuccess(true);
+      addLog('🎉 [축하합니다!] 모든 실전 튜토리얼 퀘스트를 완수하여 정식 대장장이로 임명되었습니다!', 'boss');
+    }
+  };
+
   // Reset Game Data
   const handleResetData = () => {
     localStorage.removeItem(STORAGE_KEY);
@@ -1460,6 +1542,11 @@ export default function App() {
         <Navbar
           stats={stats}
           onOpenSaveModal={() => setIsSaveModalOpen(true)}
+          onOpenSettingsModal={() => setIsSettingsModalOpen(true)}
+          onOpenTutorialModal={() => {
+            setIsTutorialFromSettings(true);
+            setIsTutorialModalOpen(true);
+          }}
           onOpenCheatModal={() => setIsCheatModalOpen(true)}
           onOpenPartyModal={() => handleOpenPartyModal()}
           onOpenSpeedrunModal={() => setIsSpeedrunSetupModalOpen(true)}
@@ -1469,6 +1556,37 @@ export default function App() {
           activeTab={activeTab}
           setActiveTab={setActiveTab}
         />
+
+        {/* Real-time Step-by-Step Guided Tutorial Banner */}
+        {stats.tutorialActive && !stats.tutorialCompleted && (
+          <InteractiveTutorialBanner
+            currentStepIndex={stats.tutorialStep || 0}
+            activeTab={activeTab}
+            onNavigateTab={(tab) => {
+              setActiveTab(tab);
+              // If tab is awakening and player is on mission 5 (awakening inspection)
+              if (tab === 'awakening' && (stats.tutorialStep === 4)) {
+                setTimeout(() => handleAdvanceTutorialMission('mission_awakening'), 600);
+              }
+            }}
+            onSkipTutorial={() => {
+              setStats((prev) => {
+                const updated = { ...prev, tutorialActive: false, tutorialCompleted: true };
+                try {
+                  localStorage.setItem(STORAGE_KEY, JSON.stringify(updated));
+                } catch {
+                  // Ignored
+                }
+                return updated;
+              });
+              addLog('[튜토리얼] 실전 튜토리얼을 건너뛰었습니다. (설정 화면에서 언제든 다시 진행 가능)', 'system');
+            }}
+            onOpenFullGuide={() => {
+              setIsTutorialFromSettings(true);
+              setIsTutorialModalOpen(true);
+            }}
+          />
+        )}
       </header>
 
       {/* Main Viewport Container */}
@@ -1722,6 +1840,69 @@ export default function App() {
             setIsPartyModalOpen(true);
           }}
           addLog={addLog}
+        />
+      )}
+
+      {/* Settings Modal */}
+      {isSettingsModalOpen && (
+        <SettingsModal
+          isOpen={isSettingsModalOpen}
+          onClose={() => setIsSettingsModalOpen(false)}
+          stats={stats}
+          onUpdateStats={setStats}
+          onOpenTutorial={() => {
+            setIsSettingsModalOpen(false);
+            setIsTutorialFromSettings(true);
+            setIsTutorialModalOpen(true);
+          }}
+          onRestartInteractiveTutorial={() => {
+            setIsSettingsModalOpen(false);
+            setStats((prev) => {
+              const updated = {
+                ...prev,
+                tutorialActive: true,
+                tutorialCompleted: false,
+                tutorialStep: 0,
+              };
+              try {
+                localStorage.setItem(STORAGE_KEY, JSON.stringify(updated));
+              } catch {
+                // Ignored
+              }
+              return updated;
+            });
+            setActiveTab('anvil');
+            addLog('[실전 튜토리얼] 초보자 미션 퀘스트를 1단계부터 다시 시작합니다!', 'system');
+          }}
+          onOpenSaveModal={() => {
+            setIsSettingsModalOpen(false);
+            setIsSaveModalOpen(true);
+          }}
+          onResetData={handleResetData}
+        />
+      )}
+
+      {/* Beginner Tutorial & Full Guide Modal */}
+      {isTutorialModalOpen && (
+        <TutorialModal
+          isOpen={isTutorialModalOpen}
+          onClose={() => setIsTutorialModalOpen(false)}
+          isFromSettings={isTutorialFromSettings}
+          onNavigateTab={(tab) => {
+            setActiveTab(tab);
+          }}
+          onCompleteTutorial={() => {
+            setStats((prev) => {
+              const updated = { ...prev, tutorialCompleted: true };
+              try {
+                localStorage.setItem(STORAGE_KEY, JSON.stringify(updated));
+              } catch {
+                // Ignored
+              }
+              return updated;
+            });
+            addLog('[튜토리얼] 신규 대장장이 입문 가이드를 완료했습니다! 행운을 빕니다.', 'system');
+          }}
         />
       )}
 

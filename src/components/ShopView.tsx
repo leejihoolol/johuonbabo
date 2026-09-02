@@ -68,10 +68,12 @@ export const ShopView: React.FC<ShopViewProps> = ({
               onBuyItem('stones_10');
             }}
             disabled={stats.gold < 1000}
-            className="w-full py-2 bg-amber-600 hover:bg-amber-500 disabled:opacity-40 text-neutral-950 rounded text-xs font-bold font-mono border border-amber-400 shadow cursor-pointer flex items-center justify-center gap-1.5"
+            className={`w-full py-2 bg-amber-600 hover:bg-amber-500 disabled:opacity-40 text-neutral-950 rounded text-xs font-bold font-mono border border-amber-400 shadow cursor-pointer flex items-center justify-center gap-1.5 ${
+              stats.tutorialActive && stats.tutorialStep === 2 ? 'ring-2 ring-yellow-400 animate-pulse' : ''
+            }`}
           >
             <PixelIcon name="gold" size={14} />
-            <span>1,000 골드</span>
+            <span>1,000 골드 {stats.tutorialActive && stats.tutorialStep === 2 ? '👉 [미션]' : ''}</span>
           </button>
         </div>
 

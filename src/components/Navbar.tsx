@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Volume2, VolumeX, Music, HardDrive, Sparkles, Crown, Users, Timer } from 'lucide-react';
+import { Volume2, VolumeX, Music, HardDrive, Sparkles, Crown, Users, Timer, Settings, HelpCircle } from 'lucide-react';
 import { PlayerStats } from '../types';
 import { PixelIcon, PixelIconName } from './PixelIcon';
 import { sound } from '../utils/sound';
@@ -7,6 +7,8 @@ import { sound } from '../utils/sound';
 interface NavbarProps {
   stats: PlayerStats;
   onOpenSaveModal: () => void;
+  onOpenSettingsModal?: () => void;
+  onOpenTutorialModal?: () => void;
   onOpenCheatModal?: () => void;
   onOpenPartyModal?: () => void;
   onOpenSpeedrunModal?: () => void;
@@ -20,6 +22,8 @@ interface NavbarProps {
 export const Navbar: React.FC<NavbarProps> = ({ 
   stats, 
   onOpenSaveModal, 
+  onOpenSettingsModal,
+  onOpenTutorialModal,
   onOpenCheatModal,
   onOpenPartyModal,
   onOpenSpeedrunModal,
@@ -247,6 +251,30 @@ export const Navbar: React.FC<NavbarProps> = ({
             }`}
           >
             <Music className="w-4 h-4" />
+          </button>
+
+          <button
+            onClick={() => {
+              sound.playClick();
+              if (onOpenTutorialModal) onOpenTutorialModal();
+            }}
+            title="초보자 튜토리얼 및 게임 가이드"
+            className="flex items-center gap-1 px-2.5 py-1 bg-neutral-800 hover:bg-neutral-700 active:bg-neutral-900 border-2 border-amber-600/60 text-amber-300 rounded font-mono text-xs cursor-pointer transition-colors"
+          >
+            <HelpCircle className="w-3.5 h-3.5 text-amber-400" />
+            <span className="hidden sm:inline">가이드</span>
+          </button>
+
+          <button
+            onClick={() => {
+              sound.playClick();
+              if (onOpenSettingsModal) onOpenSettingsModal();
+            }}
+            title="게임 설정 (오디오, 이펙트, 튜토리얼 다시보기)"
+            className="flex items-center gap-1 px-2.5 py-1 bg-neutral-800 hover:bg-neutral-700 active:bg-neutral-900 border-2 border-neutral-600 text-neutral-200 rounded font-mono text-xs cursor-pointer transition-colors"
+          >
+            <Settings className="w-3.5 h-3.5 text-amber-400" />
+            <span className="hidden sm:inline">설정</span>
           </button>
 
           <button

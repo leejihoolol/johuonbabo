@@ -403,12 +403,14 @@ export const AnvilView: React.FC<AnvilViewProps> = ({
                   isMaxLevel
                     ? 'bg-neutral-800 text-neutral-500 border-neutral-900 cursor-not-allowed'
                     : canAfford
-                    ? 'bg-amber-600 hover:bg-amber-500 active:bg-amber-700 active:translate-y-0.5 text-neutral-950 border-amber-800 shadow-lg'
+                    ? `bg-amber-600 hover:bg-amber-500 active:bg-amber-700 active:translate-y-0.5 text-neutral-950 border-amber-800 shadow-lg ${
+                        stats.tutorialActive && (stats.tutorialStep === 0 || !stats.tutorialStep) ? 'ring-4 ring-yellow-400 ring-offset-2 ring-offset-neutral-950 animate-pulse' : ''
+                      }`
                     : 'bg-neutral-800 text-neutral-400 border-neutral-900 cursor-not-allowed opacity-60'
                 }`}
               >
                 <PixelIcon name="hammer" size={18} className={isStriking ? 'animate-bounce' : ''} />
-                <span>강화하기</span>
+                <span>강화하기 {stats.tutorialActive && (stats.tutorialStep === 0 || !stats.tutorialStep) ? '👉 [튜토리얼]' : ''}</span>
               </button>
 
               {/* QTE Precision Enhance */}

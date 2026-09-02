@@ -364,6 +364,9 @@ export interface PlayerStats {
   musicEnabled: boolean;
   screenShake: boolean;
   damageNumbers: boolean;
+  tutorialCompleted?: boolean;
+  tutorialStep?: number;
+  tutorialActive?: boolean;
 
   // Player Profile & Party
   playerName?: string;

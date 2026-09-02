@@ -66,7 +66,7 @@ export const BlacksmithView: React.FC<BlacksmithViewProps> = ({
 
       {/* Research Perks Grid */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
-        {RESEARCH_LIST.map((res) => {
+        {RESEARCH_LIST.map((res, index) => {
           const curLevel = stats.researches[res.id] || 0;
           const isMax = curLevel >= res.maxLevel;
           const cost = getResearchCost(res);
@@ -130,7 +130,9 @@ export const BlacksmithView: React.FC<BlacksmithViewProps> = ({
                   isMax
                     ? 'bg-neutral-800 text-neutral-600 border-neutral-700 cursor-default'
                     : canAfford
-                    ? 'bg-amber-600 hover:bg-amber-500 active:bg-amber-700 text-neutral-950 border-amber-400 shadow'
+                    ? `bg-amber-600 hover:bg-amber-500 active:bg-amber-700 text-neutral-950 border-amber-400 shadow ${
+                        stats.tutorialActive && stats.tutorialStep === 3 && index === 0 ? 'ring-2 ring-yellow-400 animate-pulse' : ''
+                      }`
                     : 'bg-neutral-950 text-neutral-500 border-neutral-800 cursor-not-allowed opacity-60'
                 }`}
               >
@@ -139,7 +141,7 @@ export const BlacksmithView: React.FC<BlacksmithViewProps> = ({
                 ) : (
                   <>
                     <PixelIcon name="gold" size={14} />
-                    <span>{cost.toLocaleString()} 골드로 연구하기</span>
+                    <span>{cost.toLocaleString()} 골드로 연구하기 {stats.tutorialActive && stats.tutorialStep === 3 && index === 0 ? '👉 [미션]' : ''}</span>
                   </>
                 )}
               </button>
