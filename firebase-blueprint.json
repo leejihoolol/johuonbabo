@@ -1,5 +1,45 @@
 {
   "entities": {
+    "users": {
+      "title": "User Profiles",
+      "description": "Registered Google Auth user profiles with nicknames, avatars, and admin roles",
+      "type": "object",
+      "properties": {
+        "uid": { "type": "string" },
+        "email": { "type": "string" },
+        "displayName": { "type": "string" },
+        "playerName": { "type": "string" },
+        "playerAvatar": { "type": "string" },
+        "isAdmin": { "type": "boolean" },
+        "createdAt": { "type": "number" },
+        "lastLoginAt": { "type": "number" }
+      }
+    },
+    "leaderboard": {
+      "title": "Global Leaderboard Rankings",
+      "description": "Live global ranking entries for sword levels, CP, gold, rebirths, and tower progression",
+      "type": "object",
+      "properties": {
+        "uid": { "type": "string" },
+        "name": { "type": "string" },
+        "avatar": { "type": "string" },
+        "email": { "type": "string" },
+        "isAdmin": { "type": "boolean" },
+        "maxSwordLevel": { "type": "number" },
+        "currentSwordLevel": { "type": "number" },
+        "swordAwakeningLevel": { "type": "number" },
+        "swordName": { "type": "string" },
+        "combatPower": { "type": "number" },
+        "gold": { "type": "number" },
+        "diamonds": { "type": "number" },
+        "rebirthCount": { "type": "number" },
+        "superRebirthCount": { "type": "number" },
+        "towerFloor": { "type": "number" },
+        "highestStage": { "type": "number" },
+        "worldId": { "type": "number" },
+        "updatedAt": { "type": "number" }
+      }
+    },
     "parties": {
       "title": "Party Rooms",
       "description": "Real-time multiplayer co-op party rooms for Dungeon, World Boss, and Infinite Spire",

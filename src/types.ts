@@ -573,4 +573,44 @@ export interface TradeChatMessage {
   isSystem?: boolean;
 }
 
+// ----------------------------------------------------
+// Google Auth & Global Leaderboard Types
+// ----------------------------------------------------
+
+export type LeaderboardCategory = 'swordLevel' | 'combatPower' | 'gold' | 'rebirth' | 'tower' | 'stage';
+
+export interface LeaderboardEntry {
+  uid: string;
+  name: string;
+  avatar: string;
+  email?: string;
+  isAdmin?: boolean;
+  maxSwordLevel: number;
+  currentSwordLevel: number;
+  swordAwakeningLevel: number;
+  swordName: string;
+  combatPower: number;
+  gold: number;
+  diamonds: number;
+  rebirthCount: number;
+  superRebirthCount: number;
+  towerFloor: number;
+  highestStage: number;
+  worldId: number;
+  updatedAt: number;
+}
+
+export interface UserProfile {
+  uid: string;
+  email: string | null;
+  displayName: string | null;
+  photoURL: string | null;
+  playerName: string;
+  playerAvatar: string;
+  isAdmin: boolean;
+  createdAt: number;
+  lastLoginAt: number;
+}
+
+
 

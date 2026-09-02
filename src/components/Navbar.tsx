@@ -1,17 +1,22 @@
 import React, { useState } from 'react';
-import { Volume2, VolumeX, Music, HardDrive, Sparkles, Crown, Users, Timer, Settings, HelpCircle } from 'lucide-react';
+import { Volume2, VolumeX, Music, HardDrive, Sparkles, Crown, Users, Timer, Settings, HelpCircle, Trophy, User as UserIcon, LogIn } from 'lucide-react';
+import { User } from 'firebase/auth';
 import { PlayerStats } from '../types';
 import { PixelIcon, PixelIconName } from './PixelIcon';
 import { sound } from '../utils/sound';
+import { isUserAdmin } from '../utils/firebaseAuth';
 
 interface NavbarProps {
   stats: PlayerStats;
+  user?: User | null;
   onOpenSaveModal: () => void;
   onOpenSettingsModal?: () => void;
   onOpenTutorialModal?: () => void;
   onOpenCheatModal?: () => void;
   onOpenPartyModal?: () => void;
   onOpenSpeedrunModal?: () => void;
+  onOpenRankingModal?: () => void;
+  onOpenUserProfileModal?: () => void;
   onQuickRebirth?: () => void;
   isSpeedrunActive?: boolean;
   onVersionClick?: () => void;
@@ -21,12 +26,15 @@ interface NavbarProps {
 
 export const Navbar: React.FC<NavbarProps> = ({ 
   stats, 
+  user,
   onOpenSaveModal, 
   onOpenSettingsModal,
   onOpenTutorialModal,
   onOpenCheatModal,
   onOpenPartyModal,
   onOpenSpeedrunModal,
+  onOpenRankingModal,
+  onOpenUserProfileModal,
   onQuickRebirth,
   isSpeedrunActive,
   onVersionClick,
@@ -62,7 +70,8 @@ export const Navbar: React.FC<NavbarProps> = ({
     return num.toLocaleString();
   };
 
-  const isCheatActive = Boolean(stats.adminUnlocked || stats.cheatUnlocked);
+  const isAdmin = isUserAdmin(user?.email);
+  const isCheatActive = Boolean(isAdmin || stats.adminUnlocked || stats.cheatUnlocked);
 
   const tabs: { id: string; label: string; icon: PixelIconName; highlight?: boolean }[] = [
     { id: 'anvil', label: '모루 강화', icon: 'anvil' },
@@ -201,6 +210,20 @@ export const Navbar: React.FC<NavbarProps> = ({
             </button>
           )}
 
+          {onOpenRankingModal && (
+            <button
+              onClick={() => {
+                sound.playClick();
+                onOpenRankingModal();
+              }}
+              title="실시간 전역 랭킹 / 명예의 전당"
+              className="flex items-center gap-1.5 px-2.5 py-1 bg-gradient-to-r from-amber-600 via-yellow-500 to-amber-600 hover:brightness-110 active:scale-95 border-2 border-yellow-300 text-neutral-950 font-black rounded font-mono text-xs cursor-pointer shadow-lg transition-all"
+            >
+              <Trophy className="w-3.5 h-3.5 text-neutral-950 fill-neutral-950" />
+              <span>랭킹</span>
+            </button>
+          )}
+
           {onOpenPartyModal && (
             <button
               onClick={() => {
@@ -215,21 +238,70 @@ export const Navbar: React.FC<NavbarProps> = ({
             </button>
           )}
 
+          {/* Google Auth / Profile Button */}
+          {onOpenUserProfileModal && (
+            <button
+              onClick={() => {
+                sound.playClick();
+                onOpenUserProfileModal();
+              }}
+              title={user ? `대장장이: ${stats.playerName || user.displayName || '내 프로필'}` : '구글 계정 로그인 및 프로필 설정'}
+              className={`flex items-center gap-1.5 px-2.5 py-1 rounded font-mono text-xs cursor-pointer shadow-md transition-all active:scale-95 border-2 ${
+                user
+                  ? isAdmin
+                    ? 'bg-neutral-800 hover:bg-neutral-700 border-amber-500/80 text-amber-300'
+                    : 'bg-neutral-800 hover:bg-neutral-700 border-emerald-500/80 text-emerald-300'
+                  : 'bg-white hover:bg-neutral-100 text-neutral-900 border-neutral-300 font-bold'
+              }`}
+            >
+              {user ? (
+                <>
+                  {user.photoURL ? (
+                    <img src={user.photoURL} alt="Avatar" className="w-3.5 h-3.5 rounded-full object-cover" />
+                  ) : (
+                    <UserIcon className="w-3.5 h-3.5 text-amber-400" />
+                  )}
+                  <span className="font-bold max-w-[80px] sm:max-w-[110px] truncate">
+                    {stats.playerName || user.displayName || '내 프로필'}
+                  </span>
+                </>
+              ) : (
+                <>
+                  <svg className="w-3.5 h-3.5" viewBox="0 0 24 24">
+                    <path
+                      fill="#4285F4"
+                      d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"
+                    />
+                    <path
+                      fill="#34A853"
+                      d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"
+                    />
+                    <path
+                      fill="#FBBC05"
+                      d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.06H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.94l2.85-2.22.81-.63z"
+                    />
+                    <path
+                      fill="#EA4335"
+                      d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.06l3.66 2.84c.87-2.6 3.3-4.52 6.16-4.52z"
+                    />
+                  </svg>
+                  <span className="hidden sm:inline font-bold">로그인</span>
+                </>
+              )}
+            </button>
+          )}
+
           {isCheatActive && onOpenCheatModal && (
             <button
               onClick={() => {
                 sound.playSuccess();
                 onOpenCheatModal();
               }}
-              title="어드민 치트 메뉴 열기"
-              className={`flex items-center gap-1 px-2.5 py-1 text-neutral-950 font-bold border-2 rounded font-mono text-xs cursor-pointer shadow-lg animate-pulse transition-all ${
-                stats.adminUnlocked
-                  ? 'bg-gradient-to-r from-rose-500 via-amber-400 to-rose-500 border-amber-300 hover:brightness-110'
-                  : 'bg-gradient-to-r from-amber-600 to-rose-600 hover:from-amber-500 hover:to-rose-500 border-amber-300'
-              }`}
+              title="관리자 콘솔"
+              className="flex items-center gap-1 px-2.5 py-1 text-neutral-950 font-bold border-2 rounded font-mono text-xs cursor-pointer shadow-lg transition-all bg-gradient-to-r from-amber-400 to-amber-500 border-amber-300 hover:brightness-110 active:scale-95"
             >
-              <Crown className="w-3.5 h-3.5" />
-              <span>{stats.adminUnlocked ? '어드민 치트' : '치트'}</span>
+              <Crown className="w-3.5 h-3.5 fill-neutral-950" />
+              <span>{isAdmin ? '관리자 콘솔' : '치트'}</span>
             </button>
           )}
 

@@ -16,12 +16,17 @@ import { InteractiveTutorialBanner } from './components/InteractiveTutorialBanne
 import { INTERACTIVE_TUTORIAL_MISSIONS } from './data/interactiveTutorialData';
 import { CheatModal } from './components/CheatModal';
 import { AdminPasswordModal } from './components/AdminPasswordModal';
+import { RankingModal } from './components/RankingModal';
+import { UserProfileModal } from './components/UserProfileModal';
 import { EndingCinematicModal } from './components/EndingCinematicModal';
 import { PartyLobbyModal } from './components/PartyLobbyModal';
 import { PartyBattleArena } from './components/PartyBattleArena';
 import { SpeedrunHUD } from './components/SpeedrunHUD';
 import { SpeedrunSetupModal } from './components/SpeedrunSetupModal';
 import { SpeedrunVictoryModal } from './components/SpeedrunVictoryModal';
+import { User } from 'firebase/auth';
+import { subscribeToAuth, isUserAdmin } from './utils/firebaseAuth';
+import { syncPlayerToLeaderboard } from './utils/firebaseLeaderboard';
 
 import { Achievement, ElementType, GameLog, Monster, PartyRoom, PlayerStats, Rune, StoredSword, Sword, SpeedrunGoal, SpeedrunState, SpeedrunRecord } from './types';
 import { SWORDS_DATA } from './data/swords';
@@ -171,11 +176,56 @@ export default function App() {
   const [isTutorialFromSettings, setIsTutorialFromSettings] = useState(false);
   const [isCheatModalOpen, setIsCheatModalOpen] = useState(false);
   const [isAdminPasswordModalOpen, setIsAdminPasswordModalOpen] = useState(false);
+  const [isRankingModalOpen, setIsRankingModalOpen] = useState(false);
+  const [isUserProfileModalOpen, setIsUserProfileModalOpen] = useState(false);
+  const [currentUser, setCurrentUser] = useState<User | null>(null);
   const [isPartyModalOpen, setIsPartyModalOpen] = useState(false);
   const [activePartyRoom, setActivePartyRoom] = useState<PartyRoom | null>(null);
   const [partyPresetTarget, setPartyPresetTarget] = useState<any>(null);
   const [isEndingActive, setIsEndingActive] = useState(false);
   const [isAutoEnhancing, setIsAutoEnhancing] = useState(false);
+
+  // Subscribe to Firebase Google Authentication State
+  useEffect(() => {
+    const unsub = subscribeToAuth((user) => {
+      setCurrentUser(user);
+      if (user) {
+        const isAdmin = isUserAdmin(user.email);
+        setStats((prev) => {
+          const updated = {
+            ...prev,
+            playerName: prev.playerName || user.displayName || '픽셀 대장장이',
+            adminUnlocked: isAdmin,
+            cheatUnlocked: isAdmin ? true : prev.cheatUnlocked,
+            unlockedCheatMode: isAdmin ? true : prev.unlockedCheatMode,
+          };
+          try {
+            localStorage.setItem(STORAGE_KEY, JSON.stringify(updated));
+          } catch {}
+          return updated;
+        });
+
+        if (isAdmin) {
+          addLog(`[시스템] 관리자 권한이 활성화되었습니다.`, 'boss');
+        } else {
+          addLog(`[구글 계정] ${user.displayName || '대장장이'} 님 로그인 완료! (랭킹 등록 활성화)`, 'system');
+        }
+      } else {
+        setStats((prev) => {
+          const updated = {
+            ...prev,
+            adminUnlocked: false,
+          };
+          try {
+            localStorage.setItem(STORAGE_KEY, JSON.stringify(updated));
+          } catch {}
+          return updated;
+        });
+      }
+    });
+
+    return () => unsub();
+  }, []);
 
   // Version 3-click trigger state
   const [versionClicks, setVersionClicks] = useState(0);
@@ -294,6 +344,15 @@ export default function App() {
     }, 5000);
     return () => clearInterval(saveTimer);
   }, [stats]);
+
+  // Periodic Leaderboard Auto-Sync for Logged-in User (Every 30 seconds)
+  useEffect(() => {
+    if (!currentUser) return;
+    const syncTimer = setInterval(() => {
+      syncPlayerToLeaderboard(currentUser.uid, currentUser, stats, currentSword);
+    }, 30000);
+    return () => clearInterval(syncTimer);
+  }, [currentUser, stats, currentSword]);
 
   // Auto-Mine Stones Research Timer (Every 10 seconds)
   useEffect(() => {
@@ -1541,15 +1600,24 @@ export default function App() {
 
         <Navbar
           stats={stats}
+          user={currentUser}
           onOpenSaveModal={() => setIsSaveModalOpen(true)}
           onOpenSettingsModal={() => setIsSettingsModalOpen(true)}
           onOpenTutorialModal={() => {
             setIsTutorialFromSettings(true);
             setIsTutorialModalOpen(true);
           }}
-          onOpenCheatModal={() => setIsCheatModalOpen(true)}
+          onOpenCheatModal={() => {
+            if (isUserAdmin(currentUser?.email)) {
+              setIsCheatModalOpen(true);
+            } else {
+              setIsAdminPasswordModalOpen(true);
+            }
+          }}
           onOpenPartyModal={() => handleOpenPartyModal()}
           onOpenSpeedrunModal={() => setIsSpeedrunSetupModalOpen(true)}
+          onOpenRankingModal={() => setIsRankingModalOpen(true)}
+          onOpenUserProfileModal={() => setIsUserProfileModalOpen(true)}
           onQuickRebirth={handleRebirth}
           isSpeedrunActive={speedrunState.isActive}
           onVersionClick={handleVersionClick}
@@ -1746,17 +1814,11 @@ export default function App() {
                   ? 'bg-amber-950/80 border-amber-400 text-amber-300 shadow-[0_0_10px_rgba(245,158,11,0.3)]'
                   : 'bg-neutral-900 hover:bg-neutral-850 border-neutral-800 hover:border-neutral-700 text-neutral-400 hover:text-neutral-200'
               }`}
-              title="버전 버튼 (3회 연속 클릭 시 어드민 인증 창 오픈)"
             >
               <span>Pixel Sword Master v1.3.0</span>
               {versionClicks > 0 && versionClicks < 3 && (
                 <span className="text-amber-400 text-[10px] bg-amber-900/60 px-1 py-0.2 rounded font-bold animate-pulse">
-                  클릭 {versionClicks}/3
-                </span>
-              )}
-              {stats.adminUnlocked && (
-                <span className="text-rose-400 text-[10px] bg-rose-950/90 px-1.5 py-0.5 rounded border border-rose-700">
-                  👑 ADMIN
+                  {versionClicks}/3
                 </span>
               )}
             </button>
@@ -1765,7 +1827,7 @@ export default function App() {
           </div>
 
           <div className="flex items-center gap-3">
-            {(stats.adminUnlocked || stats.cheatUnlocked) && (
+            {isUserAdmin(currentUser?.email) && (
               <button
                 onClick={() => {
                   sound.playSuccess();
@@ -1773,22 +1835,51 @@ export default function App() {
                 }}
                 className="text-xs text-amber-400 hover:text-amber-300 font-bold flex items-center gap-1 cursor-pointer bg-neutral-900 px-2.5 py-1 rounded border border-amber-500/50 hover:bg-neutral-800 transition-colors"
               >
-                <span>👑 어드민 치트 메뉴 열기</span>
+                <span>관리자 콘솔</span>
               </button>
             )}
-            <span className="text-[11px] text-neutral-600 font-mono">
-              비밀번호 인증 모드 지원
+            <span className="text-[11px] text-neutral-500 font-mono">
+              실시간 클라우드 동기화 지원
             </span>
           </div>
         </div>
       </footer>
 
-      {/* Admin Password Verification Modal */}
+      {/* Admin Auth Verification Modal (Google Auth Only, Password Disabled) */}
       <AdminPasswordModal
         isOpen={isAdminPasswordModalOpen}
         onClose={() => setIsAdminPasswordModalOpen(false)}
         onSuccess={handleAdminSuccess}
+        currentUser={currentUser}
       />
+
+      {/* Global Real-time Leaderboard Modal */}
+      {isRankingModalOpen && (
+        <RankingModal
+          isOpen={isRankingModalOpen}
+          onClose={() => setIsRankingModalOpen(false)}
+          user={currentUser}
+          stats={stats}
+          currentSword={currentSword}
+          onOpenProfile={() => {
+            setIsRankingModalOpen(false);
+            setIsUserProfileModalOpen(true);
+          }}
+        />
+      )}
+
+      {/* User Profile & Nickname & Google Auth Modal */}
+      {isUserProfileModalOpen && (
+        <UserProfileModal
+          isOpen={isUserProfileModalOpen}
+          onClose={() => setIsUserProfileModalOpen(false)}
+          user={currentUser}
+          stats={stats}
+          currentSword={currentSword}
+          onUpdateStats={setStats}
+          onOpenCheatModal={() => setIsCheatModalOpen(true)}
+        />
+      )}
 
       {/* Ending Cinematic Modal (THE END) */}
       {isEndingActive && <EndingCinematicModal onComplete={handleEndingComplete} />}
