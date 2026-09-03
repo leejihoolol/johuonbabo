@@ -1,14 +1,13 @@
 import React, { useState } from 'react';
 import { Volume2, VolumeX, Music, HardDrive, Sparkles, Crown, Users, Timer, Settings, HelpCircle, Trophy, User as UserIcon, LogIn } from 'lucide-react';
-import { User } from 'firebase/auth';
 import { PlayerStats } from '../types';
 import { PixelIcon, PixelIconName } from './PixelIcon';
 import { sound } from '../utils/sound';
-import { isUserAdmin } from '../utils/firebaseAuth';
+import { isUserAdmin, AppUser } from '../utils/firebaseAuth';
 
 interface NavbarProps {
   stats: PlayerStats;
-  user?: User | null;
+  user?: AppUser | null;
   onOpenSaveModal: () => void;
   onOpenSettingsModal?: () => void;
   onOpenTutorialModal?: () => void;

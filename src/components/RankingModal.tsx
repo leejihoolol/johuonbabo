@@ -1,15 +1,15 @@
 import React, { useState, useEffect } from 'react';
 import { X, Trophy, Swords, Zap, Coins, RotateCcw, Castle, RefreshCw, Crown, Sparkles, User as UserIcon, Shield, Search } from 'lucide-react';
-import { User } from 'firebase/auth';
 import { LeaderboardCategory, LeaderboardEntry, PlayerStats, Sword } from '../types';
 import { subscribeToLeaderboard, syncPlayerToLeaderboard, calculateCombatPower } from '../utils/firebaseLeaderboard';
+import { AppUser } from '../utils/firebaseAuth';
 import { PixelIcon } from './PixelIcon';
 import { sound } from '../utils/sound';
 
 interface RankingModalProps {
   isOpen: boolean;
   onClose: () => void;
-  user: User | null;
+  user: AppUser | null;
   stats: PlayerStats;
   currentSword: Sword;
   onOpenProfile: () => void;

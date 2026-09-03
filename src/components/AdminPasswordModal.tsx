@@ -1,14 +1,13 @@
 import React, { useState } from 'react';
 import { CheckCircle, X, Lock, Crown, AlertCircle } from 'lucide-react';
-import { User } from 'firebase/auth';
 import { sound } from '../utils/sound';
-import { isUserAdmin, loginWithGoogle } from '../utils/firebaseAuth';
+import { isUserAdmin, loginWithGoogle, AppUser } from '../utils/firebaseAuth';
 
 interface AdminPasswordModalProps {
   isOpen: boolean;
   onClose: () => void;
   onSuccess: () => void;
-  currentUser?: User | null;
+  currentUser?: AppUser | null;
 }
 
 export const AdminPasswordModal: React.FC<AdminPasswordModalProps> = ({

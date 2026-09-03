@@ -1,7 +1,7 @@
 import { collection, doc, setDoc, getDocs, query, orderBy, limit, onSnapshot } from 'firebase/firestore';
 import { db, isUserAdmin } from './firebase';
 import { LeaderboardCategory, LeaderboardEntry, PlayerStats, Sword } from '../types';
-import { User } from 'firebase/auth';
+import { AppUser } from './customEmailAuth';
 
 export function calculateCombatPower(stats: PlayerStats, currentSword: Sword): number {
   const baseAtk = currentSword.atk || 10;
@@ -19,7 +19,7 @@ export function calculateCombatPower(stats: PlayerStats, currentSword: Sword): n
 
 export async function syncPlayerToLeaderboard(
   uid: string,
-  user: User | null,
+  user: AppUser | { email?: string | null; displayName?: string | null; photoURL?: string | null } | null,
   stats: PlayerStats,
   currentSword: Sword,
   overrideName?: string,

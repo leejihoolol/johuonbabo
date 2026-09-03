@@ -24,8 +24,7 @@ import { PartyBattleArena } from './components/PartyBattleArena';
 import { SpeedrunHUD } from './components/SpeedrunHUD';
 import { SpeedrunSetupModal } from './components/SpeedrunSetupModal';
 import { SpeedrunVictoryModal } from './components/SpeedrunVictoryModal';
-import { User } from 'firebase/auth';
-import { subscribeToAuth, isUserAdmin } from './utils/firebaseAuth';
+import { subscribeToAuth, isUserAdmin, AppUser } from './utils/firebaseAuth';
 import { syncPlayerToLeaderboard } from './utils/firebaseLeaderboard';
 
 import { Achievement, ElementType, GameLog, Monster, PartyRoom, PlayerStats, Rune, StoredSword, Sword, SpeedrunGoal, SpeedrunState, SpeedrunRecord } from './types';
@@ -178,14 +177,14 @@ export default function App() {
   const [isAdminPasswordModalOpen, setIsAdminPasswordModalOpen] = useState(false);
   const [isRankingModalOpen, setIsRankingModalOpen] = useState(false);
   const [isUserProfileModalOpen, setIsUserProfileModalOpen] = useState(false);
-  const [currentUser, setCurrentUser] = useState<User | null>(null);
+  const [currentUser, setCurrentUser] = useState<AppUser | null>(null);
   const [isPartyModalOpen, setIsPartyModalOpen] = useState(false);
   const [activePartyRoom, setActivePartyRoom] = useState<PartyRoom | null>(null);
   const [partyPresetTarget, setPartyPresetTarget] = useState<any>(null);
   const [isEndingActive, setIsEndingActive] = useState(false);
   const [isAutoEnhancing, setIsAutoEnhancing] = useState(false);
 
-  // Subscribe to Firebase Google Authentication State
+  // Subscribe to Authentication State
   useEffect(() => {
     const unsub = subscribeToAuth((user) => {
       setCurrentUser(user);
@@ -208,7 +207,7 @@ export default function App() {
         if (isAdmin) {
           addLog(`[시스템] 관리자 권한이 활성화되었습니다.`, 'boss');
         } else {
-          addLog(`[구글 계정] ${user.displayName || '대장장이'} 님 로그인 완료! (랭킹 등록 활성화)`, 'system');
+          addLog(`[계정 로그인] ${user.displayName || user.email?.split('@')[0] || '대장장이'} 님 로그인 완료! (랭킹 등록 활성화)`, 'system');
         }
       } else {
         setStats((prev) => {
