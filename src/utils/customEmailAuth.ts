@@ -120,12 +120,11 @@ export async function requestVerificationCode(
           message: result.message || `${cleanEmail} 메일함으로 6자리 인증 코드가 성공적으로 발송되었습니다! 메일함(또는 스팸함)을 확인해주세요.`,
         };
       } else if (result.serviceConfigured) {
-        // Fallback code when provider couldn't send to external email directly
+        // Mail service is configured but failed to deliver real email
         return {
-          success: true,
+          success: false,
           realEmailSent: false,
-          code: result.fallbackCode || code,
-          message: `6자리 보안 인증코드가 즉시 발급되었습니다.`,
+          message: result.message || '이메일 발송에 실패했습니다. 이메일 주소를 다시 확인해주세요.',
         };
       }
     }

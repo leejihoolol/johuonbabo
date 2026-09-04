@@ -75,41 +75,66 @@ async function startServer() {
     if (resendApiKey) {
       try {
         const resendFrom = process.env.RESEND_FROM || 'Pixel Sword Master <onboarding@resend.dev>';
-        const response = await fetch('https://api.resend.com/emails', {
+        const formattedFrom = resendFrom.includes('<') ? resendFrom : `Pixel Sword Master <${resendFrom}>`;
+        
+        let response = await fetch('https://api.resend.com/emails', {
           method: 'POST',
           headers: {
             Authorization: `Bearer ${resendApiKey}`,
             'Content-Type': 'application/json',
           },
           body: JSON.stringify({
-            from: resendFrom,
+            from: formattedFrom,
             to: [cleanEmail],
             subject: `[Pixel Sword Master] 대장장이 보안 인증 코드: [${cleanCode}]`,
             html: getVerificationEmailHtml(cleanCode, purpose),
           }),
         });
 
-        const data = await response.json();
+        let data: any = await response.json();
+
+        // If custom domain is still pending or not verified by API key, fallback to onboarding@resend.dev
+        if (!response.ok && (data?.message?.includes('not verified') || data?.message?.includes('domain'))) {
+          console.warn('[Email] Custom domain failed with Resend, attempting onboarding@resend.dev fallback...', data?.message);
+          const fallbackResponse = await fetch('https://api.resend.com/emails', {
+            method: 'POST',
+            headers: {
+              Authorization: `Bearer ${resendApiKey}`,
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+              from: 'Pixel Sword Master <onboarding@resend.dev>',
+              to: [cleanEmail],
+              subject: `[Pixel Sword Master] 대장장이 보안 인증 코드: [${cleanCode}]`,
+              html: getVerificationEmailHtml(cleanCode, purpose),
+            }),
+          });
+          const fallbackData: any = await fallbackResponse.json();
+          if (fallbackResponse.ok) {
+            response = fallbackResponse;
+            data = fallbackData;
+          }
+        }
+
         if (response.ok) {
-          console.log(`[Email] Resend email successfully dispatched to ${cleanEmail}`);
+          console.log(`[Email] Resend email successfully dispatched to ${cleanEmail} (id: ${data?.id})`);
           return res.json({
             success: true,
             serviceConfigured: true,
             provider: 'resend',
-            message: `${cleanEmail} 메일함으로 인증 코드가 성공적으로 전송되었습니다!`,
+            message: `${cleanEmail} 메일함으로 6자리 인증 코드가 성공적으로 발송되었습니다!`,
           });
         } else {
           console.warn('[Email] Resend API returned error:', data);
           let reasonMsg = data?.message || '';
-          // If Resend sandbox domain restriction (only allows sending to account owner email)
           if (data?.statusCode === 403 && data?.message?.includes('own email address')) {
-            reasonMsg = 'Resend 테스트 도메인 제한: Resend에 가입한 계정 이메일(또는 resend.com/domains에 등록한 도메인)로만 직접 전송이 허용됩니다.';
+            reasonMsg = 'Resend 테스트 도메인 제한: Resend에 등록된 계정 이메일(또는 resend.com/domains에 승인된 도메인)로만 전송됩니다.';
           }
           return res.json({
             success: false,
             serviceConfigured: true,
             providerError: reasonMsg,
-            message: `${reasonMsg || '이메일 발송에 실패했습니다.'} (화면에 표시된 테스트 코드를 입력해주세요)`,
+            message: `${reasonMsg || '이메일 발송에 실패했습니다.'}`,
             fallbackCode: cleanCode,
           });
         }
