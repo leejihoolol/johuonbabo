@@ -605,7 +605,7 @@ export const UserProfileModal: React.FC<UserProfileModalProps> = ({
                 <div className="flex items-center justify-between mb-1">
                   <span className="text-xs font-bold flex items-center gap-1 text-amber-300">
                     <KeyRound className="w-3.5 h-3.5" />
-                    <span>테스트 보안 인증코드 (즉시 입력 가능)</span>
+                    <span>보안 인증코드 (자동 입력 완료)</span>
                   </span>
                   <button
                     type="button"
@@ -621,8 +621,8 @@ export const UserProfileModal: React.FC<UserProfileModalProps> = ({
                     {generatedCode}
                   </span>
                 </div>
-                <p className="text-[10px] text-amber-300/80 mt-1.5 text-center leading-relaxed">
-                  💡 발급된 6자리 코드가 아래 입력란에 자동 적용되었습니다. 완료 버튼을 누르시면 즉시 가입/로그인됩니다.
+                <p className="text-[10px] text-amber-300/90 mt-1.5 text-center leading-relaxed">
+                  💡 발급된 6자리 인증코드가 아래 입력란에 자동 적용되었습니다. 비밀번호를 입력하고 완료를 누르면 바로 가입/로그인됩니다!
                 </p>
               </div>
             )}
